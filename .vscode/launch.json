@@ -1,0 +1,30 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Current File",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "cwd": "${fileDirname}",
+      "justMyCode": false
+    }
+    // {
+    //   "name": "PyrightLangServer Debug",
+    //   "type": "node",
+    //   "request": "launch",
+    //   "runtimeExecutable": "node",
+    //   "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
+
+    //   "args": ["packages/pyright-internal/src/nodeMain.ts", "--socket", "5643"], // Change the args according to your needs
+
+    //   "cwd": "${workspaceRoot}",
+    //   "internalConsoleOptions": "openOnSessionStart",
+    //   "skipFiles": ["<node_internals>/**", "node_modules/**"]
+    // }
+  ]
+}
