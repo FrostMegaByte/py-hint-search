@@ -55,72 +55,58 @@ def main():
     lsp_client = LspClient(lsp_endpoint)
 
     capabilities = ClientCapabilities(
-        {
-            "workspace": {
-                "applyEdit": True,
-                "workspaceEdit": {
-                    "documentChanges": True,
-                },
-                "workspaceFolders": True,
+        workspace={
+            "apply_edit": True,
+            "workspace_edit": {
+                "document_changes": True,
             },
-        }
+            # DO NOT ENABLE BECAUSE PYRIGHT THEN WON'T SEND DIAGNOSTICS!!!
+            # "did_change_configuration": {"dynamic_registration": True},
+            # "configuration": True,  # Needed for workspace/configuration to work which allows pyright to send diagnostics
+            "workspace_folders": True,
+        },
+        text_document={
+            "synchronization": {"dynamic_registration": True},
+            "publish_diagnostics": {"related_information": True},
+            "diagnostic": {
+                "dynamic_registration": True,
+                "related_document_support": True,
+            },
+        },
     )
-    # capabilities = ClientCapabilities(
-    #     **{
-    #         "text_document": {
-    #             "synchronization": {"dynamicRegistration": True},
-    #             "publishDiagnostics": {"relatedInformation": True},
-    #             "diagnostic": {
-    #                 "dynamicRegistration": True,
-    #                 "relatedDocumentSupport": True,
-    #             },
-    #         },
-    #         "workspace": {
-    #             "applyEdit": True,
-    #             "workspaceEdit": {
-    #                 "documentChanges": True,
-    #             },
-    #             "didChangeConfiguration": {"dynamicRegistration": True},
-    #             "configuration": True,  # Needed for workspace/configuration to work which allows pyright to send diagnostics
-    #             "workspaceFolders": True,
-    #         },
-    #     }
-    # )
 
     cwd = os.getcwd()
     root_uri = f"file:///{cwd}"
-    # workspace_folders = [{"name": "python-lsp", "uri": root_uri}]
-    workspace_folders = [
-        {
-            "name": "t",
-            "uri": "file:///d%3A/Documents/TU%20Delft/Year%206/Master%27s%20Thesis/t",
-        }
-    ]
+    workspace_folders = [{"name": "python-lsp", "uri": root_uri}]
+    # workspace_folders = [
+    #     {
+    #         "name": "t",
+    #         "uri": "file:///d%3A/Documents/TU%20Delft/Year%206/Master%27s%20Thesis/t",
+    #     }
+    # ]
 
     lsp_client.initialize(
         InitializeParams(
-            **{
-                "process_id": p.pid,
-                "root_path": None,
-                "root_uri": root_uri,
-                "initialization_options": None,
-                "capabilities": capabilities,
-                "trace": "verbose",
-                "workspace_folders": workspace_folders,
-            }
+            process_id=p.pid,
+            root_path=None,
+            root_uri=root_uri,
+            initialization_options=None,
+            capabilities=capabilities,
+            trace="verbose",
+            workspace_folders=workspace_folders,
         )
     )
     time.sleep(2)
     lsp_client.initialized()
     time.sleep(2)
-    lsp_client.register()
-    time.sleep(2)
+    # lsp_client.register()
+    # time.sleep(2)
 
-    file_path = "d:/Documents/TU Delft/Year 6/Master's Thesis/t/test.py"
-    uri = "file:///d%3A/Documents/TU%20Delft/Year%206/Master%27s%20Thesis/t/test.py"
-    # file_path = "d:\Documents\TU Delft\Year 6\Master's Thesis\lsp-mark-python\src\example\example.py"
+    # file_path = "d:/Documents/TU Delft/Year 6/Master's Thesis/t/test.py"
+    # uri = "file:///d%3A/Documents/TU%20Delft/Year%206/Master%27s%20Thesis/t/test.py"
+    file_path = "d:\Documents\TU Delft\Year 6\Master's Thesis\lsp-mark-python\src\example\example.py"
     # uri = "file:///d%3A/Documents/TU%20Delft/Year%206/Master%27s%20Thesis/lsp-mark-python/src/example/example.py"
-    # uri = "file:///" + file_path
+    uri = "file:///" + file_path
     version = 1
     text = open(file_path, "r").read()
     lsp_client.didOpen(
@@ -134,13 +120,13 @@ def main():
         )
     )
     time.sleep(2)
-    lsp_client.didChangeConfiguration()
-    time.sleep(2)
-    lsp_client.sendPythonConfiguration()
-    time.sleep(2)
+    # lsp_client.didChangeConfiguration()
+    # time.sleep(2)
+    # lsp_client.sendPythonConfiguration()
+    # time.sleep(2)
 
-    file_path_wrong = "d:/Documents/TU Delft/Year 6/Master's Thesis/t/test.py"
-    # file_path_wrong = "d:\Documents\TU Delft\Year 6\Master's Thesis\lsp-mark-python\src\example\example-wrong.py"
+    # file_path_wrong = "d:/Documents/TU Delft/Year 6/Master's Thesis/t/test.py"
+    file_path_wrong = "d:\Documents\TU Delft\Year 6\Master's Thesis\lsp-mark-python\src\example\example-wrong.py"
     new_text = open(file_path_wrong, "r").read()
     document = VersionedTextDocumentIdentifier(uri=uri, version=version + 1)
     change = TextDocumentContentChangeEvent_Type2(text=new_text)
