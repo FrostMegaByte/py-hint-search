@@ -4,9 +4,9 @@ import argparse
 
 import time
 
-from clientgood.json_rpc_endpoint import JsonRpcEndpoint
-from clientgood.lsp_client import LspClient
-from clientgood.lsp_endpoint import LspEndpoint
+from client.json_rpc_endpoint import JsonRpcEndpoint
+from client.lsp_client import LspClient
+from client.lsp_endpoint import LspEndpoint
 
 from lsprotocol.types import (
     TextDocumentItem,
