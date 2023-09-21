@@ -1,4 +1,5 @@
 {
   "typeCheckingMode": "strict",
-  "verboseOutput": true
+  "verboseOutput": true,
+  "logLevel": "Trace"
 }

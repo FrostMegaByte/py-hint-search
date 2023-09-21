@@ -66,7 +66,6 @@ class JsonRpcEndpoint(object):
             if not line:
                 return None
             line = line.decode()
-            print("\n" + line)
             # TODO: handle content type as well.
             match = re.match(JSON_RPC_RES_REGEX, line)
             if match is None or not match.groups():

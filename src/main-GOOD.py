@@ -1,6 +1,5 @@
 import os
 import subprocess
-import threading
 import argparse
 
 import time
@@ -51,7 +50,6 @@ def main():
 
     json_rpc_endpoint = JsonRpcEndpoint(p.stdin, p.stdout)
     lsp_endpoint = LspEndpoint(json_rpc_endpoint)
-
     lsp_client = LspClient(lsp_endpoint)
 
     capabilities = ClientCapabilities(
@@ -76,14 +74,8 @@ def main():
     )
 
     cwd = os.getcwd()
-    root_uri = f"file:///{cwd}"
+    root_uri = f"file:///{cwd}/src/example/"
     workspace_folders = [{"name": "python-lsp", "uri": root_uri}]
-    # workspace_folders = [
-    #     {
-    #         "name": "t",
-    #         "uri": "file:///d%3A/Documents/TU%20Delft/Year%206/Master%27s%20Thesis/t",
-    #     }
-    # ]
 
     lsp_client.initialize(
         InitializeParams(
@@ -102,8 +94,6 @@ def main():
     # lsp_client.register()
     # time.sleep(2)
 
-    # file_path = "d:/Documents/TU Delft/Year 6/Master's Thesis/t/test.py"
-    # uri = "file:///d%3A/Documents/TU%20Delft/Year%206/Master%27s%20Thesis/t/test.py"
     file_path = "d:\Documents\TU Delft\Year 6\Master's Thesis\lsp-mark-python\src\example\example.py"
     # uri = "file:///d%3A/Documents/TU%20Delft/Year%206/Master%27s%20Thesis/lsp-mark-python/src/example/example.py"
     uri = "file:///" + file_path
@@ -125,7 +115,6 @@ def main():
     # lsp_client.sendPythonConfiguration()
     # time.sleep(2)
 
-    # file_path_wrong = "d:/Documents/TU Delft/Year 6/Master's Thesis/t/test.py"
     file_path_wrong = "d:\Documents\TU Delft\Year 6\Master's Thesis\lsp-mark-python\src\example\example-wrong.py"
     new_text = open(file_path_wrong, "r").read()
     document = VersionedTextDocumentIdentifier(uri=uri, version=version + 1)

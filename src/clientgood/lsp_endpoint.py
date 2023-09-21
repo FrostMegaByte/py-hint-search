@@ -35,7 +35,7 @@ class LspEndpoint(threading.Thread):
                 print("Server quit")
                 break
 
-            print("RECIEVED MESSAGE:", jsonrpc_message)
+            print("\nRECIEVED MESSAGE:", jsonrpc_message)
             if "result" in jsonrpc_message or "error" in jsonrpc_message:
                 self.handle_result(jsonrpc_message)
             elif "method" in jsonrpc_message:
