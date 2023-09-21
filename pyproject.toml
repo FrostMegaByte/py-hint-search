@@ -15,7 +15,7 @@ pygls = "^1.0.2"
 pytest = "^7.4.2"
 requests = "^2.31.0"
 lsprotocol = "^2023.0.0b1"
-jsonrpc = "^3.0.1"
+json-rpc = "^1.15.0"
 
 
 [build-system]

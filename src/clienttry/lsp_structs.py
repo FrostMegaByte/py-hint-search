@@ -1,17 +1,17 @@
 def to_type(o, new_type):
-    """
+    '''
     Helper funciton that receives an object or a dict and convert it to a new given type.
 
     :param object|dict o: The object to convert
     :param Type new_type: The type to convert to.
-    """
+    '''
     if new_type == type(o):
         return o
     else:
         return new_type(**o)
 
 
-class Position:
+class Position(object):
     def __init__(self, line, character):
         """
         Constructs a new Position instance.
@@ -23,7 +23,7 @@ class Position:
         self.character = character
 
 
-class Range:
+class Range(object):
     def __init__(self, start, end):
         """
         Constructs a new Range instance.
@@ -35,11 +35,10 @@ class Range:
         self.end = to_type(end, Position)
 
 
-class Location:
+class Location(object):
     """
     Represents a location inside a resource, such as a line inside a text file.
     """
-
     def __init__(self, uri, range):
         """
         Constructs a new Range instance.
@@ -50,9 +49,9 @@ class Location:
         self.uri = uri
         self.range = to_type(range, Range)
 
-
-class Diagnostic:
-    def __init__(self, range, severity, code, source, message, relatedInformation):
+ 
+class Diagnostic(object):
+     def __init__(self, range, severity, code, source, message, relatedInformation):
         """
         Constructs a new Diagnostic instance.
         :param Range range: The range at which the message applies.Resource file.
@@ -62,7 +61,7 @@ class Diagnostic:
         :param str source: A human-readable string describing the source of this
                             diagnostic, e.g. 'typescript' or 'super lint'.
         :param str message: The diagnostic's message.
-        :param list relatedInformation: An array of related diagnostic information, e.g. when symbol-names within
+        :param list relatedInformation: An array of related diagnostic information, e.g. when symbol-names within   
                                         a scope collide all definitions can be marked via this property.
         """
         self.range = range
@@ -73,14 +72,14 @@ class Diagnostic:
         self.relatedInformation = relatedInformation
 
 
-class DiagnosticSeverity:
+class DiagnosticSeverity(object):
     Error = 1
-    Warning = 2  # TODO: warning is known in python
+    Warning = 2 # TODO: warning is known in python
     Information = 3
     Hint = 4
 
 
-class DiagnosticRelatedInformation:
+class DiagnosticRelatedInformation(object):
     def __init__(self, location, message):
         """
         Constructs a new Diagnostic instance.
@@ -90,9 +89,9 @@ class DiagnosticRelatedInformation:
         self.location = location
         self.message = message
 
-
-class Command:
-    def __init__(self, title, command, arguments):
+ 
+class Command(object):
+     def __init__(self, title, command, arguments):
         """
         Constructs a new Diagnostic instance.
         :param str title: Title of the command, like `save`.
@@ -104,15 +103,14 @@ class Command:
         self.arguments = arguments
 
 
-class TextDocumentItem:
+class TextDocumentItem(object):
     """
     An item to transfer a text document from the client to the server.
     """
-
     def __init__(self, uri, languageId, version, text):
         """
         Constructs a new Diagnostic instance.
-
+        
         :param DocumentUri uri: Title of the command, like `save`.
         :param str languageId: The identifier of the actual command handler.
         :param int version: Arguments that the command handler should be invoked with.
@@ -122,91 +120,107 @@ class TextDocumentItem:
         self.languageId = languageId
         self.version = version
         self.text = text
+        
+
+class TextDocumentContentChangeEvent(object):
+    def __init__(self, text):
+        self.text = text
 
 
-class TextDocumentIdentifier:
+class TextDocumentIdentifier(object):
     """
-    Text documents are identified using a URI. On the protocol level, URIs are passed as strings.
+    Text documents are identified using a URI. On the protocol level, URIs are passed as strings. 
     """
-
     def __init__(self, uri):
         """
         Constructs a new TextDocumentIdentifier instance.
 
-        :param DocumentUri uri: The text document's URI.
+        :param DocumentUri uri: The text document's URI.       
         """
         self.uri = uri
 
+class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
+    def __init__(self, uri, version):
+        super().__init__(uri)
+        self.version = version
 
-class TextDocumentPositionParams:
+class TextDocumentPositionParams(object):
     """
     A parameter literal used in requests to pass a text document and a position inside that document.
     """
-
     def __init__(self, textDocument, position):
         """
         Constructs a new TextDocumentPositionParams instance.
-
+        
         :param TextDocumentIdentifier textDocument: The text document.
         :param Position position: The position inside the text document.
         """
         self.textDocument = textDocument
         self.position = position
+        
+class DidChangeTextDocumentParams(object):
+    def __init__(self, textDocument, contentChanges):
+        self.textDocument = textDocument
+        self.contentChanges = contentChanges
+
+class DocumentDiagnosticParams(object):
+    def __init__(self, textDocument):
+        self.textDocument = textDocument
 
 
 class LANGUAGE_IDENTIFIER:
-    BAT = "bat"
-    BIBTEX = "bibtex"
-    CLOJURE = "clojure"
-    COFFESCRIPT = "coffeescript"
-    C = "c"
-    CPP = "cpp"
-    CSHARP = "csharp"
-    CSS = "css"
-    DIFF = "diff"
-    DOCKERFILE = "dockerfile"
-    FSHARP = "fsharp"
-    GIT_COMMIT = "git-commit"
-    GIT_REBASE = "git-rebase"
-    GO = "go"
-    GROOVY = "groovy"
-    HANDLEBARS = "handlebars"
-    HTML = "html"
-    INI = "ini"
-    JAVA = "java"
-    JAVASCRIPT = "javascript"
-    JSON = "json"
-    LATEX = "latex"
-    LESS = "less"
-    LUA = "lua"
-    MAKEFILE = "makefile"
-    MARKDOWN = "markdown"
-    OBJECTIVE_C = "objective-c"
-    OBJECTIVE_CPP = "objective-cpp"
-    Perl = "perl"
-    PHP = "php"
-    POWERSHELL = "powershell"
-    PUG = "jade"
-    PYTHON = "python"
-    R = "r"
-    RAZOR = "razor"
-    RUBY = "ruby"
-    RUST = "rust"
-    SASS = "sass"
-    SCSS = "scss"
-    ShaderLab = "shaderlab"
-    SHELL_SCRIPT = "shellscript"
-    SQL = "sql"
-    SWIFT = "swift"
-    TYPE_SCRIPT = "typescript"
-    TEX = "tex"
-    VB = "vb"
-    XML = "xml"
-    XSL = "xsl"
-    YAML = "yaml"
+    BAT="bat"
+    BIBTEX="bibtex"
+    CLOJURE="clojure"
+    COFFESCRIPT="coffeescript"
+    C="c"
+    CPP="cpp"
+    CSHARP="csharp"
+    CSS="css"
+    DIFF="diff"
+    DOCKERFILE="dockerfile"
+    FSHARP="fsharp"
+    GIT_COMMIT="git-commit"
+    GIT_REBASE="git-rebase"
+    GO="go"
+    GROOVY="groovy"
+    HANDLEBARS="handlebars"
+    HTML="html"
+    INI="ini"
+    JAVA="java"
+    JAVASCRIPT="javascript"
+    JSON="json"
+    LATEX="latex"
+    LESS="less"
+    LUA="lua"
+    MAKEFILE="makefile"
+    MARKDOWN="markdown"
+    OBJECTIVE_C="objective-c"
+    OBJECTIVE_CPP="objective-cpp"
+    Perl="perl"
+    PHP="php"
+    POWERSHELL="powershell"
+    PUG="jade"
+    PYTHON="python"
+    R="r"
+    RAZOR="razor"
+    RUBY="ruby"
+    RUST="rust"
+    SASS="sass"
+    SCSS="scss"
+    ShaderLab="shaderlab"
+    SHELL_SCRIPT="shellscript"
+    SQL="sql"
+    SWIFT="swift"
+    TYPE_SCRIPT="typescript"
+    TEX="tex"
+    VB="vb"
+    XML="xml"
+    XSL="xsl"
+    YAML="yaml"
 
 
-class SymbolKind:
+class SymbolKind(object):
     File = 1
     Module = 2
     Namespace = 3
@@ -235,11 +249,10 @@ class SymbolKind:
     TypeParameter = 26
 
 
-class SymbolInformation:
+class SymbolInformation(object):
     """
     Represents information about programming constructs like variables, classes, interfaces etc.
     """
-
     def __init__(self, name, kind, location, containerName, deprecated=False):
         """
         Constructs a new SymbolInformation instance.
@@ -268,12 +281,11 @@ class SymbolInformation:
         self.containerName = containerName
 
 
-class ParameterInformation:
+class ParameterInformation(object):
     """
     Represents a parameter of a callable-signature. A parameter can
     have a label and a doc-comment.
     """
-
     def __init__(self, label, documentation=""):
         """
         Constructs a new ParameterInformation instance.
@@ -285,13 +297,12 @@ class ParameterInformation:
         self.documentation = documentation
 
 
-class SignatureInformation:
+class SignatureInformation(object):
     """
     Represents the signature of something callable. A signature
     can have a label, like a function-name, a doc-comment, and
     a set of parameters.
     """
-
     def __init__(self, label, documentation="", parameters=[]):
         """
         Constructs a new SignatureInformation instance.
@@ -302,18 +313,15 @@ class SignatureInformation:
         """
         self.label = label
         self.documentation = documentation
-        self.parameters = [
-            to_type(parameter, ParameterInformation) for parameter in parameters
-        ]
+        self.parameters = [to_type(parameter, ParameterInformation) for parameter in parameters]
 
 
-class SignatureHelp:
+class SignatureHelp(object):
     """
     Signature help represents the signature of something
     callable. There can be multiple signature but only one
     active and only one active parameter.
     """
-
     def __init__(self, signatures, activeSignature=0, activeParameter=0):
         """
         Constructs a new SignatureHelp instance.
@@ -322,26 +330,6 @@ class SignatureHelp:
         :param int activeSignature:
         :param int activeParameter:
         """
-        self.signatures = [
-            to_type(signature, SignatureInformation) for signature in signatures
-        ]
+        self.signatures = [to_type(signature, SignatureInformation) for signature in signatures]
         self.activeSignature = activeSignature
         self.activeParameter = activeParameter
-
-
-class ClientCapabilities:
-    def __init__(
-        self,
-        workspace=None,
-        textDocument=None,
-        notebookDocument=None,
-        window=None,
-        general=None,
-        experimental=None,
-    ):
-        self.workspace = workspace
-        self.textDocument = textDocument
-        self.notebookDocument = notebookDocument
-        self.window = window
-        self.general = general
-        self.experimental = experimental

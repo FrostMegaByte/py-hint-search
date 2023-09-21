@@ -3,18 +3,19 @@ from attrs import asdict
 from pylspclient import lsp_structs
 import jsonrpc
 
-from client.json_rpc_endpoint import JsonRpcEndpoint
+from clienttry.lsp_endpoint import LspEndpoint
 
 
 class LspClient(object):
-    def __init__(self, endpoint: JsonRpcEndpoint):
+    def __init__(self, endpoint: LspEndpoint):
         self.endpoint = endpoint
+        self.endpoint.start()
 
     def send_request(self, method, params=None):
-        self.endpoint.send_rpc_request(method, params)
-    
+        self.endpoint.send_request(method, params)
+
     def send_notification(self, method, params=None):
-        self.endpoint.send_rpc_notification(method, params)
+        self.endpoint.send_notification(method, params)
 
     # def initialize(
     #     self,

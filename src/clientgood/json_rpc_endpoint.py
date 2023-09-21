@@ -1,6 +1,7 @@
 from __future__ import print_function
 import json
 import re
+from pylspclient import lsp_structs
 import threading
 
 JSON_RPC_REQ_FORMAT = "Content-Length: {json_string_len}\r\n\r\n{json_string}"
@@ -17,7 +18,7 @@ class MyEncoder(json.JSONEncoder):
         return o.__dict__
 
 
-class JsonRpcEndpoint:
+class JsonRpcEndpoint(object):
     """
     Thread safe JSON RPC endpoint implementation. Responsible to recieve and send JSON RPC messages, as described in the
     protocol. More information can be found: https://www.jsonrpc.org/
@@ -41,20 +42,20 @@ class JsonRpcEndpoint:
             json_string_len=len(json_string), json_string=json_string
         )
 
-    def send_request(self, message):
+    def write_message(self, message):
         """
         Sends the given message.
 
         :param dict message: The message to send.
         """
         json_string = json.dumps(message, cls=MyEncoder)
-        print("sending:", json_string)
+        print("\nSENDING:", json_string)
         jsonrpc_req = self.__add_header(json_string)
         with self.write_lock:
             self.stdin.write(jsonrpc_req.encode())
             self.stdin.flush()
 
-    def receive_response(self):
+    def read_response(self):
         """
         Recives a message.
 
@@ -64,8 +65,8 @@ class JsonRpcEndpoint:
             line = self.stdout.readline()
             if not line:
                 return None
-            print(line)
             line = line.decode()
+            print("\n" + line)
             # TODO: handle content type as well.
             match = re.match(JSON_RPC_RES_REGEX, line)
             if match is None or not match.groups():
