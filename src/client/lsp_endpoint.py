@@ -16,6 +16,7 @@ class LspEndpoint(threading.Thread):
         self.response_dict = {}
         self.next_id = 0
         self.shutdown_flag = False
+        self.diagnostics = []
 
     def handle_result(self, jsonrpc_res):
         self.response_dict[jsonrpc_res["id"]] = jsonrpc_res
@@ -39,7 +40,9 @@ class LspEndpoint(threading.Thread):
             if "result" in jsonrpc_message or "error" in jsonrpc_message:
                 self.handle_result(jsonrpc_message)
             elif "method" in jsonrpc_message:
-                if jsonrpc_message["method"] in self.callbacks:
+                if jsonrpc_message["method"] == "textDocument/publishDiagnostics":
+                    self.diagnostics = jsonrpc_message["params"]["diagnostics"]
+                elif jsonrpc_message["method"] in self.callbacks:
                     self.callbacks[jsonrpc_message["method"]](jsonrpc_message)
                 else:
                     self.default_callback(jsonrpc_message)

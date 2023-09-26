@@ -1,4 +1,5 @@
 from api import get_type4_py_predictions
+import libcst as cst
 
 TOP_K = 3
 
@@ -29,7 +30,7 @@ class Node:
         self.children = []
 
 
-def build_tree(root, arr):
+def build_tree(root: Node, arr) -> Node:
     queue = [(root, 0)]
     while queue:
         node, index = queue.pop(0)
@@ -44,17 +45,23 @@ def build_tree(root, arr):
 tree = build_tree(Node("Top level node", 1), arr)
 
 
-def depth_first_traversal(root):
+def depth_first_traversal(root: Node, python_code: str):
     if root is None:
         return []
 
     result = []
     # Ignore the top level node as it is just a dummy node
     stack = list(reversed(root.children))
+    source_code_tree = cst.parse_module(python_code)
 
     while len(stack) > 0:
         current = stack.pop()
         # print(current.typeAnnotation)
+
+        # Add type annotation to source code
+        modified_tree = insert_annotation(tree, current.typeAnnotation)
+        print(modified_tree.code)
+
         # if typecheck on current type annotation fails {
         #   continue; # As this branch is invalid
         #   Also keep a counter where if all TOP_K type annotations fail, then keep type annotation empty and add top 1 from the next level to the stack to continue the search

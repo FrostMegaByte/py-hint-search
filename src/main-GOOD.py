@@ -73,8 +73,8 @@ def main():
         },
     )
 
-    cwd = os.getcwd()
-    root_uri = f"file:///{cwd}/src/example/"
+    root_path = f"{os.getcwd()}/src/example/"
+    root_uri = f"file:///{root_path}"
     workspace_folders = [{"name": "python-lsp", "uri": root_uri}]
 
     lsp_client.initialize(
@@ -91,39 +91,58 @@ def main():
     time.sleep(2)
     lsp_client.initialized()
     time.sleep(2)
-    # lsp_client.register()
-    # time.sleep(2)
 
-    file_path = "d:\Documents\TU Delft\Year 6\Master's Thesis\lsp-mark-python\src\example\example.py"
-    # uri = "file:///d%3A/Documents/TU%20Delft/Year%206/Master%27s%20Thesis/lsp-mark-python/src/example/example.py"
-    uri = "file:///" + file_path
-    version = 1
-    text = open(file_path, "r").read()
-    lsp_client.didOpen(
-        DidOpenTextDocumentParams(
-            text_document=TextDocumentItem(
-                uri=uri,
-                language_id="python",
-                version=version,
-                text=text,
+    python_files = [file for file in os.listdir(root_path) if file.endswith(".py")]
+    for file in python_files:
+        print("Processing file:", file)
+
+        file_path = f"{root_path}/{file}"
+        # uri = "file:///d%3A/Documents/TU%20Delft/Year%206/Master%27s%20Thesis/lsp-mark-python/src/example/example.py"
+        uri = f"file:///{file_path}"
+        version = 1
+        python_code = open(file_path, "r").read()
+        lsp_client.didOpen(
+            DidOpenTextDocumentParams(
+                text_document=TextDocumentItem(
+                    uri=uri,
+                    language_id="python",
+                    version=version,
+                    text=python_code,
+                )
             )
         )
-    )
-    time.sleep(2)
-    # lsp_client.didChangeConfiguration()
-    # time.sleep(2)
-    # lsp_client.sendPythonConfiguration()
-    # time.sleep(2)
+        time.sleep(1)
 
-    file_path_wrong = "d:\Documents\TU Delft\Year 6\Master's Thesis\lsp-mark-python\src\example\example-wrong.py"
-    new_text = open(file_path_wrong, "r").read()
-    document = VersionedTextDocumentIdentifier(uri=uri, version=version + 1)
-    change = TextDocumentContentChangeEvent_Type2(text=new_text)
-    lsp_client.didChange(
-        DidChangeTextDocumentParams(text_document=document, content_changes=[change])
-    )
+        # GET PREDICTIONS FROM TYPE4PY FOR FILE
+        # ml_predictions = get_type4_py_predictions(file_path)
 
-    time.sleep(5)
+        # BUILD SEARCH TREE
+        # search_tree = build_tree(Node("Top level node", 1), ml_predictions)
+        # depth_first_traversal(search_tree, python_code)
+
+        # PERFORM CHANGE
+        # for annotation in ml_predictions:
+        #     print("ANNOTATION:", annotation)
+
+        # new_text = AnnotationInserter.insert_annotations(text)
+
+        file_path_wrong = "d:\Documents\TU Delft\Year 6\Master's Thesis\lsp-mark-python\src\example\example-wrong.py"
+        version = version + 1
+        new_python_code = open(file_path_wrong, "r").read()
+        document = VersionedTextDocumentIdentifier(uri=uri, version=version + 1)
+        change = TextDocumentContentChangeEvent_Type2(text=new_python_code)
+        lsp_client.didChange(
+            DidChangeTextDocumentParams(
+                text_document=document, content_changes=[change]
+            )
+        )
+
+        time.sleep(1)
+
+        if lsp_client.lsp_endpoint.diagnostics:
+            print("!-> DIAG:", lsp_client.lsp_endpoint.diagnostics)
+
+    time.sleep(3)
     lsp_client.shutdown()
     time.sleep(1)
     lsp_client.exit()

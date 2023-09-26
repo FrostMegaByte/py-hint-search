@@ -2,12 +2,6 @@ from typing import List, Optional
 import libcst as cst
 import libcst.matchers as m
 
-# # Open the file and read the code
-with open("src/example/example.py", "r") as file:
-    python_code = file.read()
-    tree = cst.parse_module(python_code)
-
-
 # class AnnotationInserter(cst.CSTTransformer):
 #     def leave_FunctionDef(
 #         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
@@ -27,27 +21,28 @@ with open("src/example/example.py", "r") as file:
 
 
 # -----------------
-arr = [
-    [
-        ["bool", 0.22659382019962282],
-        ["int", 0.2022255751506991],
-        ["Union[int, float]", 0.10683424624716305],
-        ["float", 0.09460898903951602],
-        ["Tuple[bool]", 0.09456387416250926],
-        ["Tuple[int, int]", 0.09054582378738726],
-    ],
-    [
-        ["int", 0.37194584766029465],
-        ["str", 0.32219782568421174],
-        ["bool", 0.1037741467367993],
-        ["Optional[str]", 0.09964588642115772],
-    ],
-]
+# arr = [
+#     [
+#         ["bool", 0.22659382019962282],
+#         ["int", 0.2022255751506991],
+#         ["Union[int, float]", 0.10683424624716305],
+#         ["float", 0.09460898903951602],
+#         ["Tuple[bool]", 0.09456387416250926],
+#         ["Tuple[int, int]", 0.09054582378738726],
+#     ],
+#     [
+#         ["int", 0.37194584766029465],
+#         ["str", 0.32219782568421174],
+#         ["bool", 0.1037741467367993],
+#         ["Optional[str]", 0.09964588642115772],
+#     ],
+# ]
 
 
 class AnnotationInserter(cst.CSTTransformer):
-    def __init__(self, annotation):
-        self.annotation: List[List[List[str, float]]] = annotation
+    def __init__(self, annotation, function_name):
+        self.annotation: str = annotation
+        self.function_name: str = function_name
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
@@ -62,10 +57,23 @@ class AnnotationInserter(cst.CSTTransformer):
         return updated_node
 
 
+def insert_annotation(tree: cst.Module, annotation: str, function_name=None):
+    transformer = AnnotationInserter(annotation, function_name)
+    modified_tree = tree.visit(transformer)
+    return modified_tree
+
+
+with open("src/example/example.py", "r") as file:
+    python_code = file.read()
+    tree = cst.parse_module(python_code)
+    modified_tree = insert_annotation(tree, "str")
+    print(modified_tree.code)
+
+
 # tree = cst.parse_module("def foo():\n    return 42")
-transformer = AnnotationInserter("str")
-modified_tree = tree.visit(transformer)
-print(modified_tree.code)
+# transformer = AnnotationInserter("str")
+# modified_tree = tree.visit(transformer)
+# print(modified_tree.code)
 
 
 # class AnnotationInserter(cst.CSTTransformer):
