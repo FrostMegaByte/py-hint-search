@@ -3,6 +3,7 @@ from lsprotocol import converters
 from lsprotocol.types import (
     DidOpenTextDocumentParams,
     DidChangeTextDocumentParams,
+    DidCloseTextDocumentParams,
     InitializeParams,
 )
 
@@ -34,16 +35,22 @@ class LspClient(object):
     def register(self):
         return self.send_notification("client/registerCapability")
 
-    def didOpen(self, params):
+    def did_open(self, params):
         return self.send_notification(
             "textDocument/didOpen",
             self.converter.unstructure(params, DidOpenTextDocumentParams),
         )
 
-    def didChange(self, params):
+    def did_change(self, params):
         return self.send_notification(
             "textDocument/didChange",
             self.converter.unstructure(params, DidChangeTextDocumentParams),
+        )
+
+    def did_close(self, params):
+        return self.send_notification(
+            "textDocument/didClose",
+            self.converter.unstructure(params, DidCloseTextDocumentParams),
         )
 
     def shutdown(self):
