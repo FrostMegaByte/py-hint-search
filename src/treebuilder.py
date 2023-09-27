@@ -1,4 +1,4 @@
-from api import get_type4_py_predictions
+from api import get_type4_py_predictions_example
 import libcst as cst
 
 TOP_K = 3
@@ -19,8 +19,32 @@ TOP_K = 3
 #         ["Optional[str]", 0.09964588642115772],
 #     ],
 # ]
+arr = [
+    {
+        "name": "multiply",
+        "params_p": {"a": [...], "args": [...], "b": [...], "kwargs": [...]},
+        "ret_type_p": [
+            ["bool", 0.22659382019962282],
+            ["int", 0.2022255751506991],
+            ["Union[int, float]", 0.10683424624716305],
+            ["float", 0.09460898903951602],
+            ["Tuple[bool]", 0.09456387416250926],
+            ["Tuple[int, int]", 0.09054582378738726],
+        ],
+    },
+    {
+        "name": "sum",
+        "params_p": {"a": [...], "args": [...], "b": [...], "kwargs": [...]},
+        "ret_type_p": [
+            ["int", 0.37194584766029465],
+            ["str", 0.32219782568421174],
+            ["bool", 0.1037741467367993],
+            ["Optional[str]", 0.09964588642115772],
+        ],
+    },
+]
 
-arr = get_type4_py_predictions()
+arr = get_type4_py_predictions_example()
 
 
 class Node:
