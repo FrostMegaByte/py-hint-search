@@ -2,8 +2,8 @@ import requests
 from pprint import pprint
 
 
-def get_type4_py_predictions_example():
-    with open("example/example.py") as f:
+def get_type4py_predictions_example():
+    with open("src/example/example.py") as f:
         # r = requests.post("https://type4py.com/api/predict?tc=0", f.read())
         response = requests.post("http://localhost:5001/api/predict?tc=0", f.read())
         json_response = response.json()
@@ -56,4 +56,4 @@ def get_type4_py_predictions(file_path: str):
         # return returnTypePredictions
 
 
-pprint(get_type4_py_predictions_example())
+pprint(get_type4py_predictions_example())
