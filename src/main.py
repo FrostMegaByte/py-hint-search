@@ -28,7 +28,8 @@ def main():
 
     editor = FakeEditor()
 
-    root_path = f"{os.getcwd()}/src/example/"
+    root_path = f"{os.getcwd()}/example/"
+    typed_path = f"{os.getcwd()}/typed/"
     root_uri = f"file:///{root_path}"
     workspace_folders = [{"name": "python-lsp", "uri": root_uri}]
 
@@ -42,6 +43,20 @@ def main():
         # GET PREDICTIONS FROM TYPE4PY FOR FILE
         # ml_predictions = get_type4_py_predictions(file_path)
 
+        from treebuilder import (
+            predictions,
+            transform_predictions_to_array_to_process,
+            build_tree,
+            depth_first_traversal,
+            Node,
+        )
+
+        arr = transform_predictions_to_array_to_process(predictions)
+        tree = build_tree(Node("Top level node", 1, "", ""), arr)
+
+        python_code = editor.edit_document.text
+        type_annotated_python_code = depth_first_traversal(tree, python_code, editor)
+
         # BUILD SEARCH TREE
         # search_tree = build_tree(Node("Top level node", 1), ml_predictions)
         # depth_first_traversal(search_tree, python_code)
@@ -52,9 +67,10 @@ def main():
 
         # new_text = AnnotationInserter.insert_annotations(text)
 
-        file_path_wrong = "d:\Documents\TU Delft\Year 6\Master's Thesis\lsp-mark-python\src\example\example-wrong.py"
-        new_python_code = open(file_path_wrong, "r").read()
-        editor.change_file(new_python_code)
+        typed_file_path = f"{typed_path}/{file}"
+        if not os.path.exists(typed_path):
+            os.makedirs(typed_path)
+        open(typed_file_path, "w").write(type_annotated_python_code)
         editor.close_file()
 
     editor.stop()

@@ -95,6 +95,7 @@ class FakeEditor:
         time.sleep(1)
 
     def change_file(self, new_python_code):
+        self.lsp_client.lsp_endpoint.diagnostics = []  # Clear diagnostics
         self.edit_document.version += 1
         document = VersionedTextDocumentIdentifier(
             uri=self.edit_document.uri,
@@ -107,9 +108,10 @@ class FakeEditor:
                 content_changes=[change],
             )
         )
+
+    def has_diagnostics(self):
         time.sleep(1)
-        if self.lsp_client.lsp_endpoint.diagnostics:
-            print("!-> DIAG:", self.lsp_client.lsp_endpoint.diagnostics)
+        return True if self.lsp_client.lsp_endpoint.diagnostics else False
 
     def close_file(self):
         document = TextDocumentIdentifier(uri=self.edit_document.uri)

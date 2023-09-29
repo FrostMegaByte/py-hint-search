@@ -19,7 +19,9 @@ class ParameterTypeAnnotationInserter(cst.CSTTransformer):
                             params=updated_node.params.children[:i]
                             + [
                                 param.with_changes(
-                                    annotation=cst.Annotation(cst.Name(self.annotation))
+                                    annotation=cst.Annotation(
+                                        cst.parse_expression(self.annotation)
+                                    )
                                 )
                             ]
                             + updated_node.params.children[i + 1 :]
@@ -41,7 +43,7 @@ class ReturnTypeAnnotationInserter(cst.CSTTransformer):
             or updated_node.returns is None
         ):
             return updated_node.with_changes(
-                returns=cst.Annotation(cst.Name(self.annotation))
+                returns=cst.Annotation(cst.parse_expression(self.annotation))
             )
         return updated_node
 
@@ -62,9 +64,9 @@ def insert_return_annotation(tree: cst.Module, annotation: str, function_name=No
     return modified_tree
 
 
-with open("src/example/example.py", "r") as file:
-    python_code = file.read()
-    tree = cst.parse_module(python_code)
-    modified_tree = insert_parameter_annotation(tree, "None", "multiply", "b")
-    modified_tree = insert_return_annotation(modified_tree, "int", "multiply")
-    print(modified_tree.code)
+# with open("src/example/example.py", "r") as file:
+#     python_code = file.read()
+#     tree = cst.parse_module(python_code)
+#     modified_tree = insert_parameter_annotation(tree, "None", "multiply", "b")
+#     modified_tree = insert_return_annotation(modified_tree, "int", "multiply")
+#     print(modified_tree.code)
