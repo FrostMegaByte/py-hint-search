@@ -72,9 +72,7 @@ class Node:
         return f"{self.typeAnnotation}"
 
 
-def transform_predictions_to_array_to_process(
-    func_predictions,
-):
+def transform_predictions_to_array_to_process(func_predictions):
     array_to_process = []
     for func in func_predictions:
         # First try parameters

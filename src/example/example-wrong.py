@@ -1,4 +1,4 @@
-def multiply(a: int, b: int):
+def multiply(a: int, b):
     return a * b
 
 

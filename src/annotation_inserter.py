@@ -1,3 +1,4 @@
+from typing import Dict, List
 import libcst as cst
 import libcst.matchers as m
 
@@ -70,3 +71,26 @@ def insert_return_annotation(tree: cst.Module, annotation: str, function_name=No
 #     modified_tree = insert_parameter_annotation(tree, "None", "multiply", "b")
 #     modified_tree = insert_return_annotation(modified_tree, "int", "multiply")
 #     print(modified_tree.code)
+
+
+class TypingCollector(cst.CSTVisitor):
+    def __init__(self):
+        self.type_annotated: Dict[str, List[str]] = {}
+
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
+        self.type_annotated[node.name.value] = []
+        for param in node.params.params:
+            if param.annotation is not None:
+                self.type_annotated[node.name.value].append(param.name.value)
+
+        if node.returns is not None:
+            self.type_annotated[node.name.value].append("return")
+        return False
+
+
+with open("example/example-wrong.py", "r") as file:
+    python_code = file.read()
+    tree = cst.parse_module(python_code)
+    visitor = TypingCollector()
+    tree.visit(visitor)
+    print(visitor.type_annotated)
