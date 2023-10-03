@@ -6,7 +6,6 @@ from api import get_type4py_predictions
 from annotation_inserter import TypingCollector
 from fake_editor import FakeEditor
 from treebuilder import (
-    predictions,
     transform_predictions_to_array_to_process,
     build_tree,
     depth_first_traversal,
@@ -31,6 +30,13 @@ def parse_arguments():
         default="D:\Documents\TU Delft\Year 6\Master's Thesis\lsp-mark-python\src\example",
         help="The path to the project which will be type annotated.",
         # required=True,
+    )
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        choices=range(1, 5),
+        default="3",
+        help="Try the top k type annotation predictions.",
     )
 
     return parser.parse_args()
@@ -73,7 +79,7 @@ def main():
 
             # Build the search tree
             dummy_root_node = Node("Top level node", 1, "", "")
-            search_tree = build_tree(dummy_root_node, search_tree_layers)
+            search_tree = build_tree(dummy_root_node, search_tree_layers, args.top_k)
 
             # Perform depth first traversal to annotate the source code tree (most work)
             type_annotated_source_code_tree = depth_first_traversal(

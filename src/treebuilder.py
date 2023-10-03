@@ -103,10 +103,7 @@ def transform_predictions_to_array_to_process(func_predictions, type_annotated):
     return array_to_process
 
 
-TOP_K = 3
-
-
-def build_tree(root: Node, search_tree_layers) -> Node:
+def build_tree(root: Node, search_tree_layers, top_k) -> Node:
     queue = [(root, 0)]
     next_level = 0
     while queue:
@@ -118,15 +115,11 @@ def build_tree(root: Node, search_tree_layers) -> Node:
             next_level += 1
         node.children = [
             Node(x[0], x[1], func_name, param_name)
-            for x in search_tree_layers[index][:TOP_K]
+            for x in search_tree_layers[index][:top_k]
         ]
         for i in range(len(node.children)):
             queue.append((node.children[i], index + 1))
     return root
-
-
-# arr = transform_predictions_to_array_to_process(predictions)
-# tree = build_tree(Node("Top level node", 1, "", ""), arr)
 
 
 def depth_first_traversal(
@@ -186,6 +179,3 @@ def depth_first_traversal(
         return original_source_code_tree
 
     return source_code_tree
-
-
-# print(depth_first_traversal(tree))
