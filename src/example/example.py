@@ -1,4 +1,4 @@
-def multiply(a, b):
+def multiply(a, b: float):
     return a * b
 
 

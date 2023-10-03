@@ -88,9 +88,9 @@ class TypingCollector(cst.CSTVisitor):
         return False
 
 
-with open("example/example-wrong.py", "r") as file:
-    python_code = file.read()
-    tree = cst.parse_module(python_code)
-    visitor = TypingCollector()
-    tree.visit(visitor)
-    print(visitor.type_annotated)
+# with open("example/example-wrong.py", "r") as file:
+#     python_code = file.read()
+#     tree = cst.parse_module(python_code)
+#     visitor = TypingCollector()
+#     tree.visit(visitor)
+#     print(visitor.type_annotated)

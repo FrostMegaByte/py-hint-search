@@ -1,3 +1,4 @@
+import copy
 import libcst as cst
 from annotation_inserter import insert_parameter_annotation, insert_return_annotation
 from fake_editor import FakeEditor
@@ -72,21 +73,31 @@ class Node:
         return f"{self.typeAnnotation}"
 
 
-def transform_predictions_to_array_to_process(func_predictions):
+# def filter_parameters(param, annotated_function_params):
+#     return param not in ["args", "kwargs"] or param not in annotated_function_params
+
+
+def transform_predictions_to_array_to_process(func_predictions, type_annotated):
     array_to_process = []
     for func in func_predictions:
+        func_name = func["name"]
         # First try parameters
-        for param_name, param_predictions in func["params_p"].items():
-            # Dirty trick of adding function name and parameter name information to the predictions
-            param_predictions.insert(0, [func["name"], param_name])
-            if param_name in ["args", "kwargs"]:
+        for param_name, param_predictions in func[
+            "params_p"
+        ].items():  # TODO: use filter function
+            if (
+                param_name in ["args", "kwargs"]
+                or param_name in type_annotated[func_name]
+            ):
                 continue
             else:
+                # Dirty trick of adding function name and parameter name information to the predictions
+                param_predictions.insert(0, [func_name, param_name])
                 array_to_process.append(param_predictions)
 
         # Then try return type
         # Continuation of dirty trick of adding function name and parameter name information to the predictions
-        func["ret_type_p"].insert(0, [func["name"], "return"])
+        func["ret_type_p"].insert(0, [func_name, "return"])
         array_to_process.append(func["ret_type_p"])
 
     return array_to_process
@@ -95,18 +106,19 @@ def transform_predictions_to_array_to_process(func_predictions):
 TOP_K = 3
 
 
-def build_tree(root: Node, arr) -> Node:
+def build_tree(root: Node, search_tree_layers) -> Node:
     queue = [(root, 0)]
     next_level = 0
     while queue:
         node, index = queue.pop(0)
-        if index >= len(arr):
+        if index >= len(search_tree_layers):
             continue
         if index == next_level:
-            func_name, param_name = arr[index].pop(0)
+            func_name, param_name = search_tree_layers[index].pop(0)
             next_level += 1
         node.children = [
-            Node(x[0], x[1], func_name, param_name) for x in arr[index][:TOP_K]
+            Node(x[0], x[1], func_name, param_name)
+            for x in search_tree_layers[index][:TOP_K]
         ]
         for i in range(len(node.children)):
             queue.append((node.children[i], index + 1))
@@ -117,32 +129,34 @@ def build_tree(root: Node, arr) -> Node:
 # tree = build_tree(Node("Top level node", 1, "", ""), arr)
 
 
-def depth_first_traversal(tree: Node, python_code: str, editor: FakeEditor):
+def depth_first_traversal(
+    tree: Node, original_source_code_tree: cst.Module, editor: FakeEditor
+):
     if tree is None:
-        return []
+        return original_source_code_tree
 
-    # result = []
     # Ignore the top level node as it is just a dummy node
     stack = list(reversed(tree.children))
-    source_code_tree = cst.parse_module(python_code)
+    source_code_tree = copy.deepcopy(original_source_code_tree)
 
     while len(stack) > 0:
         current = stack.pop()
 
         # Add type annotation to source code
-        if current.param_name == "return":
-            modified_tree = insert_return_annotation(
+        modified_tree = (
+            insert_return_annotation(
                 source_code_tree,
                 current.typeAnnotation,
                 current.func_name,
             )
-        else:
-            modified_tree = insert_parameter_annotation(
+            if current.param_name == "return"
+            else insert_parameter_annotation(
                 source_code_tree,
                 current.typeAnnotation,
                 current.func_name,
                 current.param_name,
             )
+        )
 
         print(modified_tree.code)
 
@@ -156,20 +170,22 @@ def depth_first_traversal(tree: Node, python_code: str, editor: FakeEditor):
 
         # If leaf node and no errors found, then we have found the correct type annotations
         if len(current.children) == 0:
+            print("Found a combination of type annotations!")
             break
 
         # if typecheck on current type annotation fails {
         #   continue; # As this branch is invalid
         #   Also keep a counter where if all TOP_K type annotations fail, then keep type annotation empty and add top 1 from the next level to the stack to continue the search
         # }
-        # if current.typeAnnotation != "int":
-        #   continue
-        # result.append(current.typeAnnotation)
 
         for child in list(reversed(current.children)):
             stack.append(child)
-    return source_code_tree.code
-    # return result  # Remove the top level node
+
+    if len(stack) == 0:
+        print("No correct combination of type annotations found...")
+        return original_source_code_tree
+
+    return source_code_tree
 
 
 # print(depth_first_traversal(tree))
