@@ -1,4 +1,5 @@
 import copy
+from typing import List
 import libcst as cst
 from annotation_inserter import insert_parameter_annotation, insert_return_annotation
 from fake_editor import FakeEditor
@@ -67,7 +68,7 @@ class Node:
         self.probability = probability
         self.func_name = func_name
         self.param_name = param_name
-        self.children = []
+        self.children: List[Node] = []
 
     def __repr__(self):
         return f"{self.typeAnnotation}"
@@ -125,11 +126,11 @@ def build_tree(root: Node, search_tree_layers, top_k) -> Node:
 def depth_first_traversal(
     tree: Node, original_source_code_tree: cst.Module, editor: FakeEditor
 ):
-    if tree is None:
+    if not tree:
         return original_source_code_tree
 
     # Ignore the top level node as it is just a dummy node
-    stack = list(reversed(tree.children))
+    stack: List[Node] = list(reversed(tree.children))
     source_code_tree = copy.deepcopy(original_source_code_tree)
 
     while len(stack) > 0:

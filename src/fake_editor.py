@@ -14,6 +14,7 @@ from lsprotocol.types import (
     ClientCapabilities,
     TextDocumentIdentifier,
     DidCloseTextDocumentParams,
+    TraceValues,
 )
 
 
@@ -23,7 +24,6 @@ class FakeEditor:
     def __init__(self):
         self.lsp_client = self._get_LSP_client()
         self.capabilities = self._get_editor_capabilities()
-        self.edit_document = None
 
     # Singleton class
     def __new__(cls):
@@ -65,7 +65,7 @@ class FakeEditor:
             },
         )
 
-    def start(self, root_uri, workspace_folders):
+    def start(self, root_uri: str, workspace_folders):
         self.lsp_client.initialize(
             InitializeParams(
                 process_id=self.process.pid,
@@ -73,14 +73,14 @@ class FakeEditor:
                 root_uri=root_uri,
                 initialization_options=None,
                 capabilities=self.capabilities,
-                trace="verbose",
+                trace=TraceValues.Verbose,
                 workspace_folders=workspace_folders,
             )
         )
         time.sleep(1)
         self.lsp_client.initialized()
 
-    def open_file(self, file_path):
+    def open_file(self, file_path: str):
         uri = f"file:///{file_path}"
         python_code = open(file_path, "r").read()
         self.edit_document = TextDocumentItem(
@@ -94,7 +94,7 @@ class FakeEditor:
         )
         time.sleep(1)
 
-    def change_file(self, new_python_code):
+    def change_file(self, new_python_code: str):
         self.lsp_client.lsp_endpoint.diagnostics = []  # Clear diagnostics
         self.edit_document.version += 1
         document = VersionedTextDocumentIdentifier(

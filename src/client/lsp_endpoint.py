@@ -49,7 +49,7 @@ class LspEndpoint(threading.Thread):
             else:
                 print("Unknown jsonrpc message")
 
-    def send_message(self, method_name, params, id=None):
+    def send_message(self, method_name: str, params, id=None):
         message_dict = {}
         message_dict["jsonrpc"] = "2.0"
         if id is not None:
@@ -59,7 +59,7 @@ class LspEndpoint(threading.Thread):
             message_dict["params"] = params
         self.json_rpc_endpoint.write_message(message_dict)
 
-    def send_result(self, method_name, result, id=None):
+    def send_result(self, method_name: str, result, id=None):
         message_dict = {}
         message_dict["jsonrpc"] = "2.0"
         if id is not None:
@@ -69,7 +69,7 @@ class LspEndpoint(threading.Thread):
             message_dict["result"] = result
         self.json_rpc_endpoint.write_message(message_dict)
 
-    def send_request(self, method_name, params=None):
+    def send_request(self, method_name: str, params=None):
         current_id = self.next_id
         self.next_id += 1
         cond = threading.Condition()
@@ -82,5 +82,5 @@ class LspEndpoint(threading.Thread):
         response = self.response_dict[current_id]
         return response["result"]
 
-    def send_notification(self, method_name, params=None):
+    def send_notification(self, method_name: str, params=None):
         self.send_message(method_name, params)

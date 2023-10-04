@@ -1,4 +1,5 @@
 {
   "editor.tabSize": 4,
-  "Pyright.trace.server": "verbose"
+  "Pyright.trace.server": "verbose",
+  "python.analysis.typeCheckingMode": "strict"
 }

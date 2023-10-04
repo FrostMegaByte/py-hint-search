@@ -4,14 +4,14 @@ import libcst.matchers as m
 
 
 class ParameterTypeAnnotationInserter(cst.CSTTransformer):
-    def __init__(self, parameter, annotation, function_name):
-        self.parameter: str = parameter
-        self.annotation: str = annotation
-        self.function_name: str = function_name
+    def __init__(self, parameter: str, annotation: str, function_name: str):
+        self.parameter = parameter
+        self.annotation = annotation
+        self.function_name = function_name
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
-    ) -> cst.CSTNode:
+    ) -> cst.FunctionDef:
         if m.matches(updated_node.name, m.Name(self.function_name)):
             for i, param in enumerate(updated_node.params.params):
                 if m.matches(param.name, m.Name(self.parameter)):
@@ -32,13 +32,13 @@ class ParameterTypeAnnotationInserter(cst.CSTTransformer):
 
 
 class ReturnTypeAnnotationInserter(cst.CSTTransformer):
-    def __init__(self, annotation, function_name):
-        self.annotation: str = annotation
-        self.function_name: str = function_name
+    def __init__(self, annotation: str, function_name: str):
+        self.annotation = annotation
+        self.function_name = function_name
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
-    ) -> cst.CSTNode:
+    ) -> cst.FunctionDef:
         if m.matches(updated_node.name, m.Name(self.function_name)) and (
             m.matches(updated_node.returns, m.Annotation())
             or updated_node.returns is None
@@ -50,7 +50,10 @@ class ReturnTypeAnnotationInserter(cst.CSTTransformer):
 
 
 def insert_parameter_annotation(
-    tree: cst.Module, annotation: str, function_name=None, parameter_name=None
+    tree: cst.Module,
+    annotation: str,
+    function_name: str = "",
+    parameter_name: str = "",
 ):
     transformer = ParameterTypeAnnotationInserter(
         parameter_name, annotation, function_name
@@ -59,7 +62,11 @@ def insert_parameter_annotation(
     return modified_tree
 
 
-def insert_return_annotation(tree: cst.Module, annotation: str, function_name=None):
+def insert_return_annotation(
+    tree: cst.Module,
+    annotation: str,
+    function_name: str = "",
+):
     transformer = ReturnTypeAnnotationInserter(annotation, function_name)
     modified_tree = tree.visit(transformer)
     return modified_tree
