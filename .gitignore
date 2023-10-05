@@ -144,6 +144,8 @@ poetry.toml
 
 # LSP config files
 pyrightconfig.json
+#TODO: remove pyrightconfig-example.json later when the example file is not needed
+pyrightconfig-example.json
 
 ### VisualStudioCode ###
 .vscode/*

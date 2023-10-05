@@ -13,7 +13,7 @@ from treebuilder import (
 )
 
 
-def parse_arguments():
+def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Python type annotator based on Pyright feedback."
     )
@@ -27,7 +27,7 @@ def parse_arguments():
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        default="D:\Documents\TU Delft\Year 6\Master's Thesis\lsp-mark-python\src\example",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/example",
         help="The path to the project which will be type annotated.",
         # required=True,
     )
@@ -42,6 +42,17 @@ def parse_arguments():
     return parser.parse_args()
 
 
+def create_pyright_config_file(project_path: str) -> None:
+    with open(os.path.join(project_path, "pyrightconfig.json"), "w") as f:
+        f.write('{ "typeCheckingMode": "strict"}')
+
+
+def remove_pyright_config_file(project_path: str) -> None:
+    pyright_config_file = os.path.join(project_path, "pyrightconfig.json")
+    if os.path.exists(pyright_config_file):
+        os.remove(pyright_config_file)
+
+
 def main():
     args = parse_arguments()
     editor = FakeEditor()
@@ -51,6 +62,7 @@ def main():
     typed_directory = "typed"
     typed_path = os.path.abspath(os.path.join(args.project_path, "..", typed_directory))
 
+    create_pyright_config_file(args.project_path)
     editor.start(root_uri, workspace_folders)
 
     # Walk through project directories and type annotate all python files
@@ -99,6 +111,7 @@ def main():
             editor.close_file()
 
     editor.stop()
+    remove_pyright_config_file(args.project_path)
 
 
 if __name__ == "__main__":
