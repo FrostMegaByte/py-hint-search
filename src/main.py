@@ -48,15 +48,15 @@ def main():
 
     root_uri = f"file:///{args.project_path}"
     workspace_folders = [{"name": "python-lsp", "uri": root_uri}]
-    typed_subdirectory = "typed"
-    typed_path = os.path.join(args.project_path, typed_subdirectory)
+    typed_directory = "typed"
+    typed_path = os.path.abspath(os.path.join(args.project_path, "..", typed_directory))
 
     editor.start(root_uri, workspace_folders)
 
     # Walk through project directories and type annotate all python files
     for root, dirs, files in os.walk(args.project_path):
-        if typed_subdirectory in dirs:
-            dirs.remove(typed_subdirectory)
+        if typed_directory in dirs:
+            dirs.remove(typed_directory)
 
         python_files = [file for file in files if file.endswith(".py")]
         for file in python_files:
@@ -88,15 +88,14 @@ def main():
 
             # Write the type annotated source code to a file
             relative_path = os.path.relpath(root, args.project_path)
-            typed_subdirectory = (
+            output_typed_directory = os.path.abspath(
                 os.path.join(typed_path, relative_path)
-                if relative_path != "."
-                else typed_path
             )
-            os.makedirs(typed_subdirectory, exist_ok=True)
-            open(os.path.join(typed_subdirectory, file), "w").write(
+            os.makedirs(output_typed_directory, exist_ok=True)
+            open(os.path.join(output_typed_directory, file), "w").write(
                 type_annotated_source_code_tree.code
             )
+
             editor.close_file()
 
     editor.stop()
