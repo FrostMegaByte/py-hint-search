@@ -24,6 +24,8 @@ class FakeEditor:
     def __init__(self):
         self.lsp_client = self._get_LSP_client()
         self.capabilities = self._get_editor_capabilities()
+        self.initial_diagnostics = []
+        self.diagnostics = []
 
     # Singleton class
     def __new__(cls):
@@ -40,7 +42,10 @@ class FakeEditor:
         )
 
         json_rpc_endpoint = JsonRpcEndpoint(self.process.stdin, self.process.stdout)
-        lsp_endpoint = LspEndpoint(json_rpc_endpoint)
+        lsp_endpoint = LspEndpoint(
+            json_rpc_endpoint,
+            callbacks={"textDocument/publishDiagnostics": self._handle_diagnostics},
+        )
         return LspClient(lsp_endpoint)
 
     def _get_editor_capabilities(self):
@@ -64,6 +69,9 @@ class FakeEditor:
                 },
             },
         )
+
+    def _handle_diagnostics(self, jsonrpc_message):
+        self.diagnostics = jsonrpc_message["params"]["diagnostics"]
 
     def start(self, root_uri: str, workspace_folders):
         self.lsp_client.initialize(
@@ -95,7 +103,7 @@ class FakeEditor:
         time.sleep(1)
 
     def change_file(self, new_python_code: str):
-        self.lsp_client.lsp_endpoint.diagnostics = []  # Clear diagnostics
+        # self.diagnostics = []  # Clear diagnostics
         self.edit_document.version += 1
         document = VersionedTextDocumentIdentifier(
             uri=self.edit_document.uri,
@@ -109,9 +117,18 @@ class FakeEditor:
             )
         )
 
-    def has_diagnostics(self):
+    def has_diagnostic_error(self):
+        DIAGNOSTIC_ERROR_PATTERN = "cannot be assigned to"
+        # TODO: Check that the diagnostic error is only for that function where the annotation was changed
+
         time.sleep(1)
-        return True if self.lsp_client.lsp_endpoint.diagnostics else False
+        for diagnostic in self.diagnostics:
+            if DIAGNOSTIC_ERROR_PATTERN in diagnostic["message"]:
+                return True
+        return False
+
+        # time.sleep(1)
+        # return True if self.diagnostics else False
 
     def close_file(self):
         document = TextDocumentIdentifier(uri=self.edit_document.uri)

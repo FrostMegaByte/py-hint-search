@@ -35,3 +35,6 @@ def get_type4py_predictions(file_path: str):
             )
         )
         return type_predictions
+
+
+# get_type4py_predictions_example()

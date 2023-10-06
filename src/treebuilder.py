@@ -156,7 +156,7 @@ def depth_first_traversal(
 
         editor.change_file(modified_tree.code)
 
-        if editor.has_diagnostics():
+        if editor.has_diagnostic_error():
             print("Diagnostics found!")
             continue
 
