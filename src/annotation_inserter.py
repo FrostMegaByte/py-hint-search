@@ -15,16 +15,15 @@ class ParameterTypeAnnotationInserter(cst.CSTTransformer):
         if m.matches(updated_node.name, m.Name(self.function_name)):
             for i, param in enumerate(updated_node.params.params):
                 if m.matches(param.name, m.Name(self.parameter)):
+                    annotation = (
+                        cst.Annotation(cst.parse_expression(self.annotation))
+                        if self.annotation != ""
+                        else None
+                    )
                     return updated_node.with_changes(
                         params=cst.Parameters(
                             params=updated_node.params.children[:i]
-                            + [
-                                param.with_changes(
-                                    annotation=cst.Annotation(
-                                        cst.parse_expression(self.annotation)
-                                    )
-                                )
-                            ]
+                            + [param.with_changes(annotation=annotation)]
                             + updated_node.params.children[i + 1 :]
                         )
                     )
@@ -43,9 +42,12 @@ class ReturnTypeAnnotationInserter(cst.CSTTransformer):
             m.matches(updated_node.returns, m.Annotation())
             or updated_node.returns is None
         ):
-            return updated_node.with_changes(
-                returns=cst.Annotation(cst.parse_expression(self.annotation))
+            annotation = (
+                cst.Annotation(cst.parse_expression(self.annotation))
+                if self.annotation != ""
+                else None
             )
+            return updated_node.with_changes(returns=annotation)
         return updated_node
 
 

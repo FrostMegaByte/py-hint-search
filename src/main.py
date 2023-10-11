@@ -90,7 +90,7 @@ def main():
             )
 
             # Build the search tree
-            dummy_root_node = Node("Top level node", 1, "", "")
+            dummy_root_node = Node("", 1, "", "")
             search_tree = build_tree(dummy_root_node, search_tree_layers, args.top_k)
 
             # Perform depth first traversal to annotate the source code tree (most work)

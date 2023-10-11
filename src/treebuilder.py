@@ -118,6 +118,8 @@ def build_tree(root: Node, search_tree_layers, top_k) -> Node:
             Node(x[0], x[1], func_name, param_name)
             for x in search_tree_layers[index][:top_k]
         ]
+        if node.typeAnnotation == "":
+            node.children.append(Node("", 1, func_name, param_name))
         for i in range(len(node.children)):
             queue.append((node.children[i], index + 1))
     return root
@@ -157,7 +159,7 @@ def depth_first_traversal(
         editor.change_file(modified_tree.code)
 
         if editor.has_diagnostic_error():
-            print("Diagnostics found!")
+            print("Diagnostic error found!")
             continue
 
         source_code_tree = modified_tree

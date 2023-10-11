@@ -1,3 +1,4 @@
+import re
 import subprocess
 import time
 from client.json_rpc_endpoint import JsonRpcEndpoint
@@ -103,7 +104,6 @@ class FakeEditor:
         time.sleep(1)
 
     def change_file(self, new_python_code: str):
-        # self.diagnostics = []  # Clear diagnostics
         self.edit_document.version += 1
         document = VersionedTextDocumentIdentifier(
             uri=self.edit_document.uri,
@@ -118,17 +118,14 @@ class FakeEditor:
         )
 
     def has_diagnostic_error(self):
-        DIAGNOSTIC_ERROR_PATTERN = "cannot be assigned to"
+        DIAGNOSTIC_ERROR_PATTERN = r"cannot be assigned to|is not defined|Operator \".\" not supported for types \".*\" and \".*\""
         # TODO: Check that the diagnostic error is only for that function where the annotation was changed
 
         time.sleep(1)
         for diagnostic in self.diagnostics:
-            if DIAGNOSTIC_ERROR_PATTERN in diagnostic["message"]:
+            if len(re.findall(DIAGNOSTIC_ERROR_PATTERN, diagnostic["message"])) > 0:
                 return True
         return False
-
-        # time.sleep(1)
-        # return True if self.diagnostics else False
 
     def close_file(self):
         document = TextDocumentIdentifier(uri=self.edit_document.uri)
