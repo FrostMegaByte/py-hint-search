@@ -25,7 +25,7 @@ class FakeEditor:
     def __init__(self):
         self.lsp_client = self._get_LSP_client()
         self.capabilities = self._get_editor_capabilities()
-        self.initial_diagnostics = []
+        self.received_diagnostics = False
         self.diagnostics = []
 
     # Singleton class
@@ -73,6 +73,7 @@ class FakeEditor:
 
     def _handle_diagnostics(self, jsonrpc_message):
         self.diagnostics = jsonrpc_message["params"]["diagnostics"]
+        self.received_diagnostics = True
 
     def start(self, root_uri: str, workspace_folders):
         self.lsp_client.initialize(
@@ -101,7 +102,11 @@ class FakeEditor:
         self.lsp_client.did_open(
             DidOpenTextDocumentParams(text_document=self.edit_document)
         )
-        time.sleep(1)
+
+        # Wait for diagnostics to be received. Currently the best async solution I could come up with
+        while not self.received_diagnostics:
+            time.sleep(0.001)
+        self.received_diagnostics = False
 
     def change_file(self, new_python_code: str):
         self.edit_document.version += 1
@@ -121,7 +126,11 @@ class FakeEditor:
         DIAGNOSTIC_ERROR_PATTERN = r"cannot be assigned to|is not defined|Operator \".\" not supported for types \".*\" and \".*\""
         # TODO: Check that the diagnostic error is only for that function where the annotation was changed
 
-        time.sleep(1)
+        # Wait for diagnostics to be received. Currently the best async solution I could come up with
+        while not self.received_diagnostics:
+            time.sleep(0.001)
+        self.received_diagnostics = False
+
         for diagnostic in self.diagnostics:
             if len(re.findall(DIAGNOSTIC_ERROR_PATTERN, diagnostic["message"])) > 0:
                 return True
@@ -131,7 +140,6 @@ class FakeEditor:
         document = TextDocumentIdentifier(uri=self.edit_document.uri)
         self.lsp_client.did_close(DidCloseTextDocumentParams(text_document=document))
         self.edit_document = None
-        time.sleep(1)
 
     def stop(self):
         self.lsp_client.shutdown()

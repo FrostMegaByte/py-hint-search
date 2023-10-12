@@ -67,9 +67,6 @@ def main():
 
     # Walk through project directories and type annotate all python files
     for root, dirs, files in os.walk(args.project_path):
-        if typed_directory in dirs:
-            dirs.remove(typed_directory)
-
         python_files = [file for file in files if file.endswith(".py")]
         for file in python_files:
             file_path = os.path.join(root, file)
@@ -81,6 +78,7 @@ def main():
             # Get already type annotationed parameters and return types
             python_code = editor.edit_document.text
             source_code_tree = cst.parse_module(python_code)
+            # TODO: add type annotations inferred by pyright to the source code tree here
             visitor = TypingCollector()
             source_code_tree.visit(visitor)
 
