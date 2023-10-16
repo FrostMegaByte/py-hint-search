@@ -7,7 +7,11 @@ def get_type4py_predictions_example():
         response = requests.post("http://localhost:5001/api/predict?tc=0", f.read())
         json_response = response.json()
 
-        functions_predictions = json_response["response"]["funcs"]
+        functions_predictions = []
+        for class_obj in json_response["response"]["classes"]:
+            functions_predictions += class_obj["funcs"]
+
+        functions_predictions += json_response["response"]["funcs"]
 
         filter_fields = ["name", "params_p", "ret_type_p"]
         type_predictions = list(
@@ -25,7 +29,11 @@ def get_type4py_predictions(file_path: str):
         response = requests.post("http://localhost:5001/api/predict?tc=0", f.read())
         json_response = response.json()
 
-        functions_predictions = json_response["response"]["funcs"]
+        functions_predictions = []
+        for class_obj in json_response["response"]["classes"]:
+            functions_predictions += class_obj["funcs"]
+
+        functions_predictions += json_response["response"]["funcs"]
 
         filter_fields = ["name", "params_p", "ret_type_p"]
         type_predictions = list(

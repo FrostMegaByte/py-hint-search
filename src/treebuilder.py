@@ -87,7 +87,7 @@ def transform_predictions_to_array_to_process(func_predictions, type_annotated):
             "params_p"
         ].items():  # TODO: use filter function
             if (
-                param_name in ["args", "kwargs"]
+                param_name in ["self", "args", "kwargs"]
                 or param_name in type_annotated[func_name]
             ):
                 continue
@@ -98,8 +98,11 @@ def transform_predictions_to_array_to_process(func_predictions, type_annotated):
 
         # Then try return type
         # Continuation of dirty trick of adding function name and parameter name information to the predictions
-        func["ret_type_p"].insert(0, [func_name, "return"])
-        array_to_process.append(func["ret_type_p"])
+        if "ret_type_p" in func:
+            func["ret_type_p"].insert(0, [func_name, "return"])
+            array_to_process.append(func["ret_type_p"])
+        else:
+            array_to_process.append([[func_name, "return"], ["None", 1.0]])
 
     return array_to_process
 
@@ -155,6 +158,7 @@ def depth_first_traversal(
         )
 
         print(modified_tree.code)
+        print("-----------------------------------")
 
         editor.change_file(modified_tree.code)
 
