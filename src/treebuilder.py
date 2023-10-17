@@ -62,12 +62,18 @@ predictions = [
 
 class Node:
     def __init__(
-        self, typeAnnotation: str, probability: float, func_name: str, param_name: str
+        self,
+        typeAnnotation: str,
+        probability: float,
+        func_name: str,
+        param_name: str,
+        layer_index: int,
     ):
         self.typeAnnotation = typeAnnotation
         self.probability = probability
         self.func_name = func_name
         self.param_name = param_name
+        self.layer_index = layer_index
         self.children: List[Node] = []
 
     def __repr__(self):
@@ -91,13 +97,16 @@ def transform_predictions_to_array_to_process(func_predictions, type_annotated):
                 or param_name in type_annotated[func_name]
             ):
                 continue
-            else:
-                # Dirty trick of adding function name and parameter name information to the predictions
-                param_predictions.insert(0, [func_name, param_name])
-                array_to_process.append(param_predictions)
+
+            # Dirty trick of adding function name and parameter name information to the predictions
+            param_predictions.insert(0, [func_name, param_name])
+            array_to_process.append(param_predictions)
 
         # Then try return type
         # Continuation of dirty trick of adding function name and parameter name information to the predictions
+        if "return" in type_annotated[func_name]:
+            continue
+
         if "ret_type_p" in func:
             func["ret_type_p"].insert(0, [func_name, "return"])
             array_to_process.append(func["ret_type_p"])
@@ -107,54 +116,100 @@ def transform_predictions_to_array_to_process(func_predictions, type_annotated):
     return array_to_process
 
 
-def build_tree(root: Node, search_tree_layers, top_k) -> Node:
+def build_tree1(root: Node, search_tree_layers, top_k: int) -> Node:
     queue = [(root, 0)]
-    next_level = 0
+    next_layer_index = 0
     while queue:
         node, index = queue.pop(0)
         if index >= len(search_tree_layers):
             continue
-        if index == next_level:
+
+        # Needed because of the dirty trick to pass extra information
+        if index == next_layer_index:
             func_name, param_name = search_tree_layers[index].pop(0)
-            next_level += 1
+            next_layer_index += 1
+
         node.children = [
-            Node(x[0], x[1], func_name, param_name)
+            Node(x[0], x[1], func_name, param_name, index + 1)
             for x in search_tree_layers[index][:top_k]
         ]
-        if node.typeAnnotation == "":
-            node.children.append(Node("", 1, func_name, param_name))
-        for i in range(len(node.children)):
-            queue.append((node.children[i], index + 1))
+        node.children.append(Node("", 1, func_name, param_name, index + 1))
+        for child_node in node.children:
+            queue.append((child_node, child_node.layer_index))
     return root
 
 
+#  Faster version of build_tree due to caching of children
+def build_tree2(root: Node, search_tree_layers, top_k: int) -> Node:
+    queue = [(root, 0)]
+    next_layer_index = 0
+    while queue:
+        node, index = queue.pop(0)
+        if index >= len(search_tree_layers):
+            continue
+
+        # Needed because of the dirty trick to pass extra information
+        if index == next_layer_index:
+            func_name, param_name = search_tree_layers[index].pop(0)
+            children = [
+                Node(x[0], x[1], func_name, param_name, index + 1)
+                for x in search_tree_layers[index][:top_k]
+            ]
+            children.append(Node("", 1, func_name, param_name, index + 1))
+            next_layer_index += 1
+
+        node.children = children
+        for child_node in node.children:
+            queue.append((child_node, child_node.layer_index))
+    return root
+
+
+# TODO: TRY RECURSIVE SOLUTION?
+
+
 def depth_first_traversal(
-    tree: Node, original_source_code_tree: cst.Module, editor: FakeEditor
+    tree: Node,
+    original_source_code_tree: cst.Module,
+    editor: FakeEditor,
+    number_of_type_slots: int,
 ):
     if not tree:
         return original_source_code_tree
 
     # Ignore the top level node as it is just a dummy node
     stack: List[Node] = list(reversed(tree.children))
+    slot_annotations = [""] * number_of_type_slots
+    modified_trees = [original_source_code_tree] + [None] * number_of_type_slots
+
     source_code_tree = copy.deepcopy(original_source_code_tree)
 
     while len(stack) > 0:
         current = stack.pop()
+        slot_annotations[current.layer_index - 1] = current.typeAnnotation
+        # Clear right side of the array as those type annotations are not yet known because of backtracking
+        slot_annotations[current.layer_index :] = [""] * (
+            number_of_type_slots - current.layer_index
+        )
 
         # Add type annotation to source code
         modified_tree = (
             insert_return_annotation(
-                source_code_tree,
+                modified_trees[current.layer_index - 1],
                 current.typeAnnotation,
                 current.func_name,
             )
             if current.param_name == "return"
             else insert_parameter_annotation(
-                source_code_tree,
+                modified_trees[current.layer_index - 1],
                 current.typeAnnotation,
                 current.func_name,
                 current.param_name,
             )
+        )
+
+        modified_trees[current.layer_index] = modified_tree
+        modified_trees[current.layer_index + 1 :] = [None] * (
+            number_of_type_slots - current.layer_index
         )
 
         print(modified_tree.code)

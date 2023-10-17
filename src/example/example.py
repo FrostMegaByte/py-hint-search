@@ -1,6 +1,6 @@
-def multiply(a, b: str):
+def multiply(a, b):
     return a * b
 
 
-def sum(a, b) -> str:
+def sum(a, b):
     return a + b

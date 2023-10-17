@@ -5,7 +5,7 @@ class Account:
 
 
 class Bank:
-    def __init__(self) -> None:
+    def __init__(self):
         self.accounts = {}
 
     def create_account(self, account_id, initial_balance):
@@ -17,3 +17,14 @@ class Bank:
         if account_id in self.accounts:
             return self.accounts[account_id].balance
         return 0.0
+
+    def perform_transaction(self, sender_id, receiver_id, amount):
+        if sender_id in self.accounts and receiver_id in self.accounts:
+            sender_account = self.accounts[sender_id]
+            receiver_account = self.accounts[receiver_id]
+
+            if sender_account.balance >= amount:
+                sender_account.withdraw(amount)
+                receiver_account.deposit(amount)
+                return True
+        return False
