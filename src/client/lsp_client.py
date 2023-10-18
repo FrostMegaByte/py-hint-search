@@ -55,11 +55,11 @@ class LspClient(object):
         )
 
     def shutdown(self):
-        self.lsp_endpoint.stop()
         return self.send_request("shutdown")
 
     def exit(self):
         self.send_notification("exit")
+        self.lsp_endpoint.stop()
 
     def didChangeConfiguration(self):
         self.send_notification(

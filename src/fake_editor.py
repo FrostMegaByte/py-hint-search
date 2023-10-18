@@ -143,5 +143,4 @@ class FakeEditor:
 
     def stop(self):
         self.lsp_client.shutdown()
-        time.sleep(1)
         self.lsp_client.exit()
