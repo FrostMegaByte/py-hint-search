@@ -7,8 +7,7 @@ from annotation_inserter import TypingCollector
 from fake_editor import FakeEditor
 from treebuilder import (
     transform_predictions_to_array_to_process,
-    build_tree1,
-    build_tree2,
+    build_tree,
     depth_first_traversal,
     Node,
 )
@@ -89,9 +88,8 @@ def main():
             )
 
             # Build the search tree
-            dummy_root_node = Node("", 1, "", "", 0)
-            # search_tree = build_tree1(dummy_root_node, search_tree_layers, args.top_k)
-            search_tree = build_tree2(dummy_root_node, search_tree_layers, args.top_k)
+            # dummy_root_node = Node("", 1, "", "", 0)
+            search_tree = build_tree(search_tree_layers, args.top_k)
 
             # Perform depth first traversal to annotate the source code tree (most work)
             type_annotated_source_code_tree = depth_first_traversal(

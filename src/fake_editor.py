@@ -127,7 +127,7 @@ class FakeEditor:
         # TODO: Check that the diagnostic error is only for that function where the annotation was changed
 
         # Wait for diagnostics to be received. Currently the best async solution I could come up with
-        while not self.received_diagnostics:
+        while not self.received_diagnostics:  # TODO: Add timeout
             time.sleep(0.001)
         self.received_diagnostics = False
 
