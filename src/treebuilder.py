@@ -227,13 +227,22 @@ def depth_first_traversal(
 
         if editor.has_diagnostic_error():
             print("Diagnostic error found!")
-            if layer_specific_indices[layer_index] >= len(type_slot["predictions"]) - 1:
+            layer_specific_indices[layer_index] += 1
+            while layer_specific_indices[layer_index] >= len(
+                search_tree[f"layer_{layer_index}"]["predictions"]
+            ):
                 layer_specific_indices[layer_index] = 0
                 layer_index -= 1
-            layer_specific_indices[layer_index] += 1
+                if layer_index < 0:
+                    break
+                layer_specific_indices[layer_index] += 1
         else:
             source_code_tree = modified_tree
             layer_index += 1
+
+    if layer_index < 0:
+        print("No possible combination of type annotations found...")
+        return original_source_code_tree
 
     if layer_index == number_of_type_slots:
         print("Found a combination of type annotations!")
