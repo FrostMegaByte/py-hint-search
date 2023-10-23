@@ -11,6 +11,7 @@ from treebuilder import (
     depth_first_traversal,
     Node,
 )
+from typestubs_parser import PyrightAnnotationCollector, PyrightAnnotationTransformer
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -59,6 +60,11 @@ def main():
 
     root_uri = f"file:///{args.project_path}"
     workspace_folders = [{"name": "python-lsp", "uri": root_uri}]
+
+    base_dir = args.project_path.rsplit("/", 1)[0]
+    stubs_directory = "typings"
+    stubs_path = os.path.abspath(os.path.join(args.project_path, "..", stubs_directory))
+
     typed_directory = "typed"
     typed_path = os.path.abspath(os.path.join(args.project_path, "..", typed_directory))
 
@@ -72,15 +78,29 @@ def main():
             file_path = os.path.join(root, file)
             editor.open_file(file_path)
 
-            # Get ML type annotation predictions
-            ml_predictions = get_type4py_predictions(file_path)
-
-            # Get already type annotationed parameters and return types
             python_code = editor.edit_document.text
             source_code_tree = cst.parse_module(python_code)
-            # TODO: add type annotations inferred by pyright to the source code tree here
+
+            # Add type annotations inferred by Pyright
+            relative_stub_subdirectory = os.path.relpath(root, base_dir)
+            stub_directory = os.path.join(stubs_path, relative_stub_subdirectory)
+            stub_file = os.path.join(stub_directory, file + "i")
+            with open(stub_file, "r") as f:
+                stub_code = f.read()
+            stub_tree = cst.parse_module(stub_code)
+            visitor = PyrightAnnotationCollector()
+            stub_tree.visit(visitor)
+            transformer = PyrightAnnotationTransformer(visitor.annotations)
+            pyright_annotated_source_code_tree = source_code_tree.visit(transformer)
+
+            # Get already type annotationed parameters and return types
             visitor = TypingCollector()
-            source_code_tree.visit(visitor)
+            pyright_annotated_source_code_tree.visit(visitor)
+
+            # Get ML type annotation predictions
+            ml_predictions = get_type4py_predictions(
+                pyright_annotated_source_code_tree.code
+            )
 
             # Transform the predictions and filter out already type annotated parameters and return types
             search_tree_layers = transform_predictions_to_array_to_process(
@@ -88,12 +108,14 @@ def main():
             )
 
             # Build the search tree
-            # dummy_root_node = Node("", 1, "", "", 0)
             search_tree = build_tree(search_tree_layers, args.top_k)
 
             # Perform depth first traversal to annotate the source code tree (most work)
             type_annotated_source_code_tree = depth_first_traversal(
-                search_tree, source_code_tree, editor, len(search_tree_layers)
+                search_tree,
+                pyright_annotated_source_code_tree,
+                editor,
+                len(search_tree_layers),
             )
 
             # Write the type annotated source code to a file
