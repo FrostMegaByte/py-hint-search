@@ -43,8 +43,3 @@ def get_subdirectories(project_path):
             subdirectories.append(subdirectory)
 
     return subdirectories
-
-
-create_typestubs(
-    "D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/example"
-)

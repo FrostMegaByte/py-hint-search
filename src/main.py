@@ -4,6 +4,7 @@ import libcst as cst
 
 from api import get_type4py_predictions
 from annotation_inserter import TypingCollector
+from classes_gatherer import get_all_classes_in_project
 from fake_editor import FakeEditor
 from treebuilder import (
     transform_predictions_to_array_to_process,
@@ -11,6 +12,7 @@ from treebuilder import (
     depth_first_traversal,
     Node,
 )
+from typestubs_creator import create_typestubs
 from typestubs_parser import PyrightAnnotationCollector, PyrightAnnotationTransformer
 
 
@@ -55,6 +57,7 @@ def remove_pyright_config_file(project_path: str) -> None:
 
 
 def main():
+    ENABLE_PYRIGHT_ANNOTATIONS = False  # TODO: Doesn't work yet, since create_typestubs() has issues with finding imports
     args = parse_arguments()
     editor = FakeEditor()
 
@@ -68,7 +71,11 @@ def main():
     typed_directory = "typed"
     typed_path = os.path.abspath(os.path.join(args.project_path, "..", typed_directory))
 
+    all_project_classes = get_all_classes_in_project(args.project_path)
+
     create_pyright_config_file(args.project_path)
+    if ENABLE_PYRIGHT_ANNOTATIONS:
+        create_typestubs(args.project_path)
     editor.start(root_uri, workspace_folders)
 
     # Walk through project directories and type annotate all python files
@@ -82,25 +89,24 @@ def main():
             source_code_tree = cst.parse_module(python_code)
 
             # Add type annotations inferred by Pyright
-            relative_stub_subdirectory = os.path.relpath(root, base_dir)
-            stub_directory = os.path.join(stubs_path, relative_stub_subdirectory)
-            stub_file = os.path.join(stub_directory, file + "i")
-            with open(stub_file, "r") as f:
-                stub_code = f.read()
-            stub_tree = cst.parse_module(stub_code)
-            visitor = PyrightAnnotationCollector()
-            stub_tree.visit(visitor)
-            transformer = PyrightAnnotationTransformer(visitor.annotations)
-            pyright_annotated_source_code_tree = source_code_tree.visit(transformer)
+            if ENABLE_PYRIGHT_ANNOTATIONS:
+                relative_stub_subdirectory = os.path.relpath(root, base_dir)
+                stub_directory = os.path.join(stubs_path, relative_stub_subdirectory)
+                stub_file = os.path.join(stub_directory, file + "i")
+                with open(stub_file, "r") as f:
+                    stub_code = f.read()
+                stub_tree = cst.parse_module(stub_code)
+                visitor = PyrightAnnotationCollector()
+                stub_tree.visit(visitor)
+                transformer = PyrightAnnotationTransformer(visitor.annotations)
+                source_code_tree = source_code_tree.visit(transformer)
 
-            # Get already type annotationed parameters and return types
+            # Get already type annotated parameters and return types
             visitor = TypingCollector()
-            pyright_annotated_source_code_tree.visit(visitor)
+            source_code_tree.visit(visitor)
 
             # Get ML type annotation predictions
-            ml_predictions = get_type4py_predictions(
-                pyright_annotated_source_code_tree.code
-            )
+            ml_predictions = get_type4py_predictions(source_code_tree.code)
 
             # Transform the predictions and filter out already type annotated parameters and return types
             search_tree_layers = transform_predictions_to_array_to_process(
@@ -113,9 +119,10 @@ def main():
             # Perform depth first traversal to annotate the source code tree (most work)
             type_annotated_source_code_tree = depth_first_traversal(
                 search_tree,
-                pyright_annotated_source_code_tree,
+                source_code_tree,
                 editor,
                 len(search_tree_layers),
+                all_project_classes,
             )
 
             # Write the type annotated source code to a file

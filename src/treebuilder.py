@@ -2,7 +2,9 @@ import copy
 from typing import Any, Dict, List
 import libcst as cst
 from annotation_inserter import insert_parameter_annotation, insert_return_annotation
+from classes_gatherer import get_import_module_path
 from fake_editor import FakeEditor
+from import_inserter import ImportInserter
 
 predictions = [
     {
@@ -182,6 +184,7 @@ def depth_first_traversal(
     original_source_code_tree: cst.Module,
     editor: FakeEditor,
     number_of_type_slots: int,
+    all_project_classes,
 ):
     layer_index = 0
     layer_specific_indices = [0] * number_of_type_slots
@@ -199,6 +202,36 @@ def depth_first_traversal(
         slot_annotations[layer_index + 1 :] = [""] * (
             number_of_type_slots - (layer_index + 1)
         )
+
+        if type_annotation not in [
+            "bool",
+            "int",
+            "float",
+            "complex",
+            "str",
+            "list",
+            "tuple",
+            "range",
+            "bytes",
+            "bytearray",
+            "memoryview",
+            "dict",
+            "set",
+            "frozenset",
+            "",
+        ]:
+            current_file_path = editor.edit_document.uri.removeprefix("file:///")
+            import_module_path = get_import_module_path(
+                all_project_classes, type_annotation, current_file_path
+            )
+
+            if import_module_path is not None:
+                transformer = ImportInserter(
+                    f"from {import_module_path} import {type_annotation}"
+                )
+                modified_trees[layer_index] = modified_trees[layer_index].visit(
+                    transformer
+                )
 
         modified_tree = (
             insert_return_annotation(
