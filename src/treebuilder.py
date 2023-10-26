@@ -1,10 +1,31 @@
 import copy
+import re
 from typing import Any, Dict, List
+import typing
 import libcst as cst
 from annotation_inserter import insert_parameter_annotation, insert_return_annotation
 from classes_gatherer import get_import_module_path
 from fake_editor import FakeEditor
 from import_inserter import ImportInserter
+
+BUILT_IN_TYPES = [
+    "bool",
+    "int",
+    "float",
+    "complex",
+    "str",
+    "list",
+    "tuple",
+    "range",
+    "bytes",
+    "bytearray",
+    "memoryview",
+    "dict",
+    "set",
+    "frozenset",
+    "None",
+    "",
+]
 
 predictions = [
     {
@@ -190,49 +211,64 @@ def depth_first_traversal(
     layer_specific_indices = [0] * number_of_type_slots
     slot_annotations = [""] * number_of_type_slots
     modified_trees = [original_source_code_tree] + [None] * number_of_type_slots
-    source_code_tree = copy.deepcopy(original_source_code_tree)
 
     while 0 <= layer_index < number_of_type_slots:
         type_slot = search_tree[f"layer_{layer_index}"]
         type_annotation = type_slot["predictions"][layer_specific_indices[layer_index]][
             0
         ]
+
+        # Type4Py sometimes returns type annotations with quotes which breaks some stuff, so must be removed
+        if '"' in type_annotation:
+            type_annotation = type_annotation.strip('"')
+
         slot_annotations[layer_index] = type_annotation
         # Clear right side of the array as those type annotations are not yet known because of backtracking
         slot_annotations[layer_index + 1 :] = [""] * (
             number_of_type_slots - (layer_index + 1)
         )
 
-        if type_annotation not in [
-            "bool",
-            "int",
-            "float",
-            "complex",
-            "str",
-            "list",
-            "tuple",
-            "range",
-            "bytes",
-            "bytearray",
-            "memoryview",
-            "dict",
-            "set",
-            "frozenset",
-            "",
-        ]:
-            current_file_path = editor.edit_document.uri.removeprefix("file:///")
-            import_module_path = get_import_module_path(
-                all_project_classes, type_annotation, current_file_path
-            )
+        # Handle imports of type annotations
+        potential_annotation_imports = (
+            list(filter(None, re.split("\[|\]|,\s*", type_annotation)))
+            if "[" in type_annotation
+            else [type_annotation]
+        )
 
-            if import_module_path is not None:
+        unknown_annotation = False
+        for annotation in potential_annotation_imports:
+            if annotation in BUILT_IN_TYPES:
+                continue
+            elif annotation in typing.__all__:
+                transformer = ImportInserter(f"from typing import {annotation}")
+                modified_trees[layer_index] = modified_trees[layer_index].visit(
+                    transformer
+                )
+            elif annotation in all_project_classes:
+                current_file_path = editor.edit_document.uri.removeprefix("file:///")
+                import_module_path = get_import_module_path(
+                    all_project_classes, annotation, current_file_path
+                )
+
+                if import_module_path is None:
+                    unknown_annotation = True
+                    break
+
                 transformer = ImportInserter(
-                    f"from {import_module_path} import {type_annotation}"
+                    f"from {import_module_path} import {annotation}"
                 )
                 modified_trees[layer_index] = modified_trees[layer_index].visit(
                     transformer
                 )
+            else:
+                unknown_annotation = True
+                break
 
+        if unknown_annotation:
+            layer_specific_indices[layer_index] += 1
+            continue
+
+        # Add type annotation to source code
         modified_tree = (
             insert_return_annotation(
                 modified_trees[layer_index],
@@ -248,16 +284,12 @@ def depth_first_traversal(
             )
         )
 
-        modified_trees[layer_index + 1] = modified_tree
-        modified_trees[layer_index + 2 :] = [None] * (
-            number_of_type_slots - (layer_index + 1)
-        )
-
         print(modified_tree.code)
         print("-----------------------------------")
 
         editor.change_file(modified_tree.code)
 
+        # On error, change pointers to try next type annotation
         if editor.has_diagnostic_error():
             print("Diagnostic error found!")
             layer_specific_indices[layer_index] += 1
@@ -270,7 +302,10 @@ def depth_first_traversal(
                     break
                 layer_specific_indices[layer_index] += 1
         else:
-            source_code_tree = modified_tree
+            modified_trees[layer_index + 1] = modified_tree
+            modified_trees[layer_index + 2 :] = [None] * (
+                number_of_type_slots - (layer_index + 1)
+            )
             layer_index += 1
 
     if layer_index < 0:
@@ -280,7 +315,7 @@ def depth_first_traversal(
     if layer_index == number_of_type_slots:
         print("Found a combination of type annotations!")
 
-    return source_code_tree
+    return modified_trees[number_of_type_slots]
 
 
 # def depth_first_traversal(

@@ -26,11 +26,11 @@ def get_all_classes_in_project(project_path) -> Dict[str, str]:
 
 
 def get_import_module_path(
-    classes: Dict[str, str], annotation: str, current_file: str
+    project_classes: Dict[str, str], annotation: str, current_file: str
 ) -> str:
-    if annotation in classes:
+    if annotation in project_classes:
         relative_path = os.path.relpath(
-            classes[annotation],
+            project_classes[annotation],
             current_file,
         )
         path_list = relative_path.removesuffix(".py").split("\\")
