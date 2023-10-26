@@ -1,7 +1,6 @@
 import os
 from typing import Dict, List, Optional, Tuple
 import libcst as cst
-import libcst.matchers as m
 
 
 class PyrightAnnotationCollector(cst.CSTVisitor):
@@ -65,57 +64,3 @@ class PyrightAnnotationTransformer(cst.CSTTransformer):
                 params=annotations[0], returns=annotations[1]
             )
         return updated_node
-
-
-# class PyrightAnnotationCollector(cst.CSTVisitor):
-#     # def __init__(self):
-#     #     self.type_annotated: Dict[str, List[str]] = {}
-
-#     def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
-#         # self.type_annotated[node.name.value] = []
-#         print(node.body.header.comment)
-#         return False
-
-
-# class PyrightAnnotationCollector(cst.CSTTransformer):
-#     def __init__(self, annotation: str, function_name: str):
-#         self.annotation = annotation
-#         self.function_name = function_name
-
-#     def leave_FunctionDef(
-#         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
-#     ) -> cst.FunctionDef:
-#         if m.matches(updated_node.name, m.Name(self.function_name)) and (
-#             m.matches(updated_node.returns, m.Annotation())
-#             or updated_node.returns is None
-#         ):
-#             annotation = (
-#                 cst.Annotation(cst.parse_expression(self.annotation))
-#                 if self.annotation != ""
-#                 else None
-#             )
-#             return updated_node.with_changes(returns=annotation)
-#         return updated_node
-
-
-def parse_typestubs(project_path):
-    stubs_directory = "typings"
-    stubs_path = os.path.abspath(os.path.join(project_path, "..", stubs_directory))
-
-    for root, dirs, files in os.walk(stubs_path):
-        for file in files:
-            stub_file = os.path.join(root, file)
-            with open(stub_file, "r") as f:
-                code = f.read()
-
-            stub_tree = cst.parse_module(code)
-            visitor = PyrightAnnotationCollector()
-            stub_tree.visit(visitor)
-            transformer = PyrightAnnotationTransformer(visitor.annotations)
-            modified_tree = stub_tree.visit(transformer)
-            # modified_tree = source_tree.visit(transformer)
-
-
-parse_typestubs(
-    "D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/example"
-)

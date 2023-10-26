@@ -10,7 +10,6 @@ from treebuilder import (
     transform_predictions_to_array_to_process,
     build_tree,
     depth_first_traversal,
-    Node,
 )
 from typestubs_creator import create_typestubs
 from typestubs_parser import PyrightAnnotationCollector, PyrightAnnotationTransformer
