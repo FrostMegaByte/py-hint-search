@@ -74,14 +74,6 @@ def insert_return_annotation(
     return modified_tree
 
 
-# with open("src/example/example.py", "r") as file:
-#     python_code = file.read()
-#     tree = cst.parse_module(python_code)
-#     modified_tree = insert_parameter_annotation(tree, "None", "multiply", "b")
-#     modified_tree = insert_return_annotation(modified_tree, "int", "multiply")
-#     print(modified_tree.code)
-
-
 class TypingCollector(cst.CSTVisitor):
     def __init__(self):
         self.type_annotated: Dict[str, List[str]] = {}
@@ -95,11 +87,3 @@ class TypingCollector(cst.CSTVisitor):
         if node.returns is not None:
             self.type_annotated[node.name.value].append("return")
         return False
-
-
-# with open("example/example-wrong.py", "r") as file:
-#     python_code = file.read()
-#     tree = cst.parse_module(python_code)
-#     visitor = TypingCollector()
-#     tree.visit(visitor)
-#     print(visitor.type_annotated)
