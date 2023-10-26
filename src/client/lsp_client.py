@@ -48,6 +48,56 @@ class LspClient(object):
             self.converter.unstructure(params, DidChangeTextDocumentParams),
         )
 
+    def show_completions(self, uri):
+        return self.send_request(
+            "textDocument/completion",
+            {
+                "textDocument": {"uri": uri},
+                "position": {"line": 0, "character": 23},  # 24, 36
+                "context": {"triggerKind": 1},
+            },
+        )
+
+    # def resolve_completion(self):
+    #     return self.send_request(
+    #         "completionItem/resolve",
+    #         {
+    #             "label": "Potato",
+    #             "labelDetails": {"description": "potato"},
+    #             "detail": "Auto-import",
+    #             "documentation": {
+    #                 "kind": "markdown",
+    #                 "value": "```\nfrom potato import Potato\n```",
+    #             },
+    #             "insertTextFormat": 1,
+    #             "textEdit": {
+    #                 "newText": "Potato",
+    #                 "range": {
+    #                     "start": {"line": 3, "character": 24},
+    #                     "end": {"line": 3, "character": 26},
+    #                 },
+    #             },
+    #             "kind": 7,
+    #             "sortText": "12.9999.Potato.06.potato",
+    #             "additionalTextEdits": [
+    #                 {
+    #                     "range": {
+    #                         "start": {"line": 3, "character": 0},
+    #                         "end": {"line": 3, "character": 0},
+    #                     },
+    #                     "newText": "from potato import Potato\r\n\r\n\r\n",
+    #                 }
+    #             ],
+    #             "data": {
+    #                 "workspacePath": "D:\\Documents\\TU Delft\\Year 6\\Master's Thesis\\t",
+    #                 "filePath": "D:\\Documents\\TU Delft\\Year 6\\Master's Thesis\\t\\test.py",
+    #                 "position": {"line": 3, "character": 26},
+    #                 "autoImportText": "```\nfrom potato import Potato\n```",
+    #                 "symbolLabel": "Potato",
+    #             },
+    #         },
+    #     )
+
     def did_close(self, params: DidCloseTextDocumentParams):
         return self.send_notification(
             "textDocument/didClose",

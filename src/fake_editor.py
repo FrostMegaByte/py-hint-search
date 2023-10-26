@@ -122,6 +122,9 @@ class FakeEditor:
             )
         )
 
+    def show_completions(self):
+        self.lsp_client.show_completions(self.edit_document.uri)
+
     def has_diagnostic_error(self):
         DIAGNOSTIC_ERROR_PATTERN = r"cannot be assigned to|is not defined|Operator \".\" not supported for types \".*\" and \".*\""
         # TODO: Check that the diagnostic error is only for that function where the annotation was changed
