@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 import libcst as cst
 import libcst.matchers as m
 
@@ -76,14 +76,25 @@ def insert_return_annotation(
 
 class TypingCollector(cst.CSTVisitor):
     def __init__(self):
-        self.type_annotated: Dict[str, List[str]] = {}
+        self.stack: List[Tuple[str, ...]] = []
+        self.type_annotated: Dict[Tuple[str, ...], List[str]] = {}
+
+    def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
+        self.stack.append(node.name.value)
+
+    def leave_ClassDef(self, node: cst.ClassDef) -> None:
+        self.stack.pop()
 
     def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
-        self.type_annotated[node.name.value] = []
+        self.stack.append(node.name.value)
+        self.type_annotated[tuple(self.stack)] = []
         for param in node.params.params:
             if param.annotation is not None:
-                self.type_annotated[node.name.value].append(param.name.value)
+                self.type_annotated[tuple(self.stack)].append(param.name.value)
 
         if node.returns is not None:
-            self.type_annotated[node.name.value].append("return")
-        return False
+            self.type_annotated[tuple(self.stack)].append("return")
+        return True
+
+    def leave_FunctionDef(self, node: cst.FunctionDef) -> None:
+        self.stack.pop()

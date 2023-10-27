@@ -12,7 +12,7 @@ def get_type4py_predictions(python_code: str):
 
     functions_predictions += json_response["response"]["funcs"]
 
-    filter_fields = ["name", "params_p", "ret_type_p"]
+    filter_fields = ["q_name", "params_p", "ret_type_p"]
     type_predictions = list(
         map(
             lambda f: {key: f[key] for key in f if key in filter_fields},

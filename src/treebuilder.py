@@ -33,7 +33,11 @@ BUILT_IN_TYPES = [
 def transform_predictions_to_array_to_process(func_predictions, type_annotated):
     array_to_process = []
     for func in func_predictions:
-        func_name = func["name"]
+        func_name = func["q_name"].split(".")
+        if "<locals>" in func_name:
+            func_name.remove("<locals>")
+        func_name = tuple(func_name)
+
         # First try parameters
         for param_name, param_predictions in func[
             "params_p"
@@ -148,13 +152,13 @@ def depth_first_traversal(
             insert_return_annotation(
                 modified_trees[layer_index],
                 type_annotation,
-                type_slot["func_name"],
+                type_slot["func_name"][-1],
             )
             if type_slot["param_name"] == "return"
             else insert_parameter_annotation(
                 modified_trees[layer_index],
                 type_annotation,
-                type_slot["func_name"],
+                type_slot["func_name"][-1],
                 type_slot["param_name"],
             )
         )
@@ -166,7 +170,6 @@ def depth_first_traversal(
 
         # On error, change pointers to try next type annotation
         if editor.has_diagnostic_error():
-            print("Diagnostic error found!")
             layer_specific_indices[layer_index] += 1
             while layer_specific_indices[layer_index] >= len(
                 search_tree[f"layer_{layer_index}"]["predictions"]

@@ -133,6 +133,7 @@ class FakeEditor:
 
         for diagnostic in self.diagnostics:
             if len(re.findall(DIAGNOSTIC_ERROR_PATTERN, diagnostic["message"])) > 0:
+                print("Diagnostic error found!")
                 return True
         return False
 
