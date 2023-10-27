@@ -2,7 +2,7 @@ import os
 import argparse
 import libcst as cst
 
-from api import get_type4py_predictions
+from api import Type4PyException, get_type4py_predictions
 from annotation_inserter import TypingCollector
 from classes_gatherer import get_all_classes_in_project
 from fake_editor import FakeEditor
@@ -105,7 +105,10 @@ def main():
             source_code_tree.visit(visitor)
 
             # Get ML type annotation predictions
-            ml_predictions = get_type4py_predictions(source_code_tree.code)
+            try:
+                ml_predictions = get_type4py_predictions(source_code_tree.code)
+            except Type4PyException:
+                continue
 
             # Transform the predictions and filter out already type annotated parameters and return types
             search_tree_layers = transform_predictions_to_array_to_process(
