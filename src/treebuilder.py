@@ -163,8 +163,8 @@ def depth_first_traversal(
             )
         )
 
-        print(modified_tree.code)
-        print("-----------------------------------")
+        # print(modified_tree.code)
+        # print("-----------------------------------")
 
         editor.change_file(modified_tree.code)
 

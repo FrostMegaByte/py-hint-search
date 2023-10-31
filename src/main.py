@@ -81,8 +81,16 @@ def main():
     for root, dirs, files in os.walk(args.project_path):
         python_files = [file for file in files if file.endswith(".py")]
         for file in python_files:
+            print(f"Processing file: {file}")
             file_path = os.path.join(root, file)
             editor.open_file(file_path)
+
+            if editor.has_diagnostic_error():
+                print(f"'{file}' contains Pyright error at the start, so skipping...")
+                # TODO: Can make this more specific by checking line and column positions of the error
+                editor.close_file()
+                print()
+                continue
 
             python_code = editor.edit_document.text
             source_code_tree = cst.parse_module(python_code)
@@ -138,6 +146,7 @@ def main():
             )
 
             editor.close_file()
+            print()
 
     editor.stop()
     remove_pyright_config_file(args.project_path)

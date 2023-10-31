@@ -103,11 +103,6 @@ class FakeEditor:
             DidOpenTextDocumentParams(text_document=self.edit_document)
         )
 
-        # Wait for diagnostics to be received. Currently the best async solution I could come up with
-        while not self.received_diagnostics:
-            time.sleep(0.001)
-        self.received_diagnostics = False
-
     def change_file(self, new_python_code: str):
         self.edit_document.version += 1
         document = VersionedTextDocumentIdentifier(
@@ -133,7 +128,7 @@ class FakeEditor:
 
         for diagnostic in self.diagnostics:
             if len(re.findall(DIAGNOSTIC_ERROR_PATTERN, diagnostic["message"])) > 0:
-                print("Diagnostic error found!")
+                # print("Diagnostic error found!")
                 return True
         return False
 
