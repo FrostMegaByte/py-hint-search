@@ -20,13 +20,12 @@ class ParameterTypeAnnotationInserter(cst.CSTTransformer):
                         if self.annotation != ""
                         else None
                     )
-                    return updated_node.with_changes(
-                        params=cst.Parameters(
-                            params=updated_node.params.children[:i]
-                            + [param.with_changes(annotation=annotation)]
-                            + updated_node.params.children[i + 1 :]
-                        )
+                    updated_params = updated_node.params.with_changes(
+                        params=updated_node.params.params[:i]
+                        + (param.with_changes(annotation=annotation),)
+                        + updated_node.params.params[i + 1 :]
                     )
+                    return updated_node.with_changes(params=updated_params)
         return updated_node
 
 
