@@ -7,7 +7,7 @@ from classes_gatherer import get_import_module_path
 from fake_editor import FakeEditor
 from import_inserter import ImportInserter
 
-BUILT_IN_TYPES = [
+BUILT_IN_TYPES = {
     "bool",
     "int",
     "float",
@@ -24,10 +24,10 @@ BUILT_IN_TYPES = [
     "frozenset",
     "None",
     "",
-]
+}
 
 # def filter_parameters(param, annotated_function_params):
-#     return param not in ["args", "kwargs"] or param not in annotated_function_params
+#     return param not in {"args", "kwargs"} or param not in annotated_function_params
 
 
 def transform_predictions_to_array_to_process(func_predictions, type_annotated):
@@ -43,7 +43,7 @@ def transform_predictions_to_array_to_process(func_predictions, type_annotated):
             "params_p"
         ].items():  # TODO: use filter function
             if (
-                param_name in ["self", "args", "kwargs"]
+                param_name in {"self", "args", "kwargs"}
                 or param_name in type_annotated[func_name]
             ):
                 continue
