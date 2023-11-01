@@ -4,8 +4,12 @@ from typing import Dict
 
 
 def get_classes_from_file(file_path) -> Dict[str, str]:
-    with open(file_path, "r") as f:
-        tree = ast.parse(f.read())
+    try:
+        with open(file_path, "r") as f:
+            tree = ast.parse(f.read())
+    except UnicodeDecodeError:
+        with open(file_path, "r", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
 
     class_dict = {
         node.name: file_path

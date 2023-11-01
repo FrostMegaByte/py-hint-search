@@ -92,7 +92,11 @@ class FakeEditor:
 
     def open_file(self, file_path: str):
         uri = f"file:///{file_path}"
-        python_code = open(file_path, "r").read()
+        try:
+            python_code = open(file_path, "r").read()
+        except UnicodeDecodeError:
+            python_code = open(file_path, "r", encoding="utf-8").read()
+
         self.edit_document = TextDocumentItem(
             uri=uri,
             language_id="python",
