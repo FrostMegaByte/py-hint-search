@@ -27,9 +27,6 @@ BUILT_IN_TYPES = {
     "",
 }
 
-# def filter_parameters(param, annotated_function_params):
-#     return param not in {"args", "kwargs"} or param not in annotated_function_params
-
 
 def transform_predictions_to_array_to_process(func_predictions, type_annotated):
     array_to_process = []
@@ -40,9 +37,7 @@ def transform_predictions_to_array_to_process(func_predictions, type_annotated):
         func_name = tuple(func_name)
 
         # First try parameters
-        for param_name, param_predictions in func[
-            "params_p"
-        ].items():  # TODO: use filter function
+        for param_name, param_predictions in func["params_p"].items():
             if (
                 param_name in {"self", "args", "kwargs"}
                 or param_name in type_annotated[func_name]

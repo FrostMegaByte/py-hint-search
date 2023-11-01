@@ -75,8 +75,9 @@ class LspEndpoint(threading.Thread):
         self.send_message(method_name, params, current_id)
         cond.wait()
         cond.release()
-        # TODO: check if error, and throw an exception
         response = self.response_dict[current_id]
+        if "error" in response:
+            raise Exception(response["error"])
         return response["result"]
 
     def send_notification(self, method_name: str, params=None):

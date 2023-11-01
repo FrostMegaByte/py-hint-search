@@ -31,7 +31,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/example",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
         help="The path to the project which will be type annotated.",
         # required=True,
     )
@@ -63,7 +63,10 @@ def main():
     args = parse_arguments()
     editor = FakeEditor()
 
-    logs_path = os.path.abspath(os.path.join(args.project_path, "..", "logs"))
+    os.chdir(os.path.abspath(os.path.join(args.project_path, "..")))
+    working_directory = os.getcwd()
+
+    logs_path = os.path.abspath(os.path.join(working_directory, "logs"))
     os.makedirs(logs_path, exist_ok=True)
     logging.basicConfig(
         filename=f"logs/{datetime.today().strftime('%Y-%m-%d %H_%M_%S')}.txt",
@@ -75,12 +78,11 @@ def main():
     root_uri = f"file:///{args.project_path}"
     workspace_folders = [{"name": "python-lsp", "uri": root_uri}]
 
-    base_dir = args.project_path.rsplit("/", 1)[0]
     stubs_directory = "typings"
-    stubs_path = os.path.abspath(os.path.join(args.project_path, "..", stubs_directory))
+    stubs_path = os.path.abspath(os.path.join(working_directory, stubs_directory))
 
     typed_directory = "type-annotated"
-    typed_path = os.path.abspath(os.path.join(args.project_path, "..", typed_directory))
+    typed_path = os.path.abspath(os.path.join(working_directory, typed_directory))
 
     all_project_classes = get_all_classes_in_project(args.project_path)
 
@@ -112,7 +114,7 @@ def main():
 
             # Add type annotations inferred by Pyright
             if ENABLE_PYRIGHT_ANNOTATIONS:
-                relative_stub_subdirectory = os.path.relpath(root, base_dir)
+                relative_stub_subdirectory = os.path.relpath(root, working_directory)
                 stub_directory = os.path.join(stubs_path, relative_stub_subdirectory)
                 stub_file = os.path.join(stub_directory, file + "i")
                 with open(stub_file, "r") as f:

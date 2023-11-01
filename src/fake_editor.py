@@ -89,6 +89,7 @@ class FakeEditor:
         )
         time.sleep(1)
         self.lsp_client.initialized()
+        time.sleep(1)
 
     def open_file(self, file_path: str):
         uri = f"file:///{file_path}"

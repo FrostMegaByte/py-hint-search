@@ -1,6 +1,7 @@
 type-annotated/
 typings/
 logs/
+projects/
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

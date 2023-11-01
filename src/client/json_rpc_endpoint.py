@@ -5,7 +5,6 @@ import threading
 
 JSON_RPC_REQ_FORMAT = "Content-Length: {json_string_len}\r\n\r\n{json_string}"
 JSON_RPC_RES_REGEX = "Content-Length: ([0-9]*)\r\n"
-# TODO: add content-type
 
 
 class MyEncoder(json.JSONEncoder):
@@ -65,7 +64,6 @@ class JsonRpcEndpoint(object):
             if not line:
                 return None
             line = line.decode()
-            # TODO: handle content type as well.
             match = re.match(JSON_RPC_RES_REGEX, line)
             if match is None or not match.groups():
                 raise RuntimeError("Bad header: " + line)
