@@ -1,6 +1,8 @@
 import os
 import argparse
 import libcst as cst
+from datetime import datetime
+import logging
 
 from api import Type4PyException, get_type4py_predictions
 from annotation_inserter import TypingCollector
@@ -57,8 +59,18 @@ def remove_pyright_config_file(project_path: str) -> None:
 
 def main():
     ENABLE_PYRIGHT_ANNOTATIONS = False  # TODO: Doesn't work yet, since create_typestubs() has issues with finding imports
+
     args = parse_arguments()
     editor = FakeEditor()
+
+    logs_path = os.path.abspath(os.path.join(args.project_path, "..", "logs"))
+    os.makedirs(logs_path, exist_ok=True)
+    logging.basicConfig(
+        filename=f"logs/{datetime.today().strftime('%Y-%m-%d %H_%M_%S')}.txt",
+        format="%(asctime)s %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
+        level=logging.DEBUG,
+    )
+    logger = logging.getLogger(__name__)
 
     root_uri = f"file:///{args.project_path}"
     workspace_folders = [{"name": "python-lsp", "uri": root_uri}]
@@ -82,14 +94,17 @@ def main():
         python_files = [file for file in files if file.endswith(".py")]
         for file in python_files:
             print(f"Processing file: {file}")
+            logger.info(f"Processing file: {file}")
             file_path = os.path.join(root, file)
             editor.open_file(file_path)
 
             if editor.has_diagnostic_error():
-                print(f"'{file}' contains Pyright error at the start, so skipping...")
+                print(f"'{file}' contains Pyright error at the start, so skipping...\n")
+                logger.info(
+                    f"'{file}' contains Pyright error at the start, so skipping..."
+                )
                 # TODO: Can make this more specific by checking line and column positions of the error
                 editor.close_file()
-                print()
                 continue
 
             python_code = editor.edit_document.text

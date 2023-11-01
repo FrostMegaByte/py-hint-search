@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import Any, Dict, List
 import typing
@@ -188,9 +189,13 @@ def depth_first_traversal(
 
     if layer_index < 0:
         print("No possible combination of type annotations found...")
+        logger = logging.getLogger(__name__)
+        logger.error("No possible combination of type annotations found...")
         return original_source_code_tree
 
     if layer_index == number_of_type_slots:
         print("Found a combination of type annotations!")
+        logger = logging.getLogger(__name__)
+        logger.info("Found a combination of type annotations!")
 
     return modified_trees[number_of_type_slots]
