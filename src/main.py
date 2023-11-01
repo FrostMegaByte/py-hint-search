@@ -79,7 +79,7 @@ def main():
     stubs_directory = "typings"
     stubs_path = os.path.abspath(os.path.join(args.project_path, "..", stubs_directory))
 
-    typed_directory = "typed"
+    typed_directory = "type-annotated"
     typed_path = os.path.abspath(os.path.join(args.project_path, "..", typed_directory))
 
     all_project_classes = get_all_classes_in_project(args.project_path)

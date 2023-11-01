@@ -10,12 +10,9 @@ packages = [{include = "client", from = "src"}]
 python = "^3.10"
 libcst = "^1.0.1"
 pyright = "^1.1.326"
-pylspclient = "^0.0.2"
-pygls = "^1.0.2"
 pytest = "^7.4.2"
 requests = "^2.31.0"
 lsprotocol = "^2023.0.0b1"
-json-rpc = "^1.15.0"
 
 
 [build-system]

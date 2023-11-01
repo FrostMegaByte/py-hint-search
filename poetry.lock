@@ -186,17 +186,6 @@ files = [
 ]
 
 [[package]]
-name = "json-rpc"
-version = "1.15.0"
-description = "JSON-RPC transport implementation"
-optional = false
-python-versions = "*"
-files = [
-    {file = "json-rpc-1.15.0.tar.gz", hash = "sha256:e6441d56c1dcd54241c937d0a2dcd193bdf0bdc539b5316524713f554b7f85b9"},
-    {file = "json_rpc-1.15.0-py2.py3-none-any.whl", hash = "sha256:4a4668bbbe7116feb4abbd0f54e64a4adcf4b8f648f19ffa0848ad0f6606a9bf"},
-]
-
-[[package]]
 name = "libcst"
 version = "1.0.1"
 description = "A concrete syntax tree with AST-like properties for Python 3.5, 3.6, 3.7, 3.8, 3.9, and 3.10 programs."
@@ -308,38 +297,6 @@ files = [
 [package.extras]
 dev = ["pre-commit", "tox"]
 testing = ["pytest", "pytest-benchmark"]
-
-[[package]]
-name = "pygls"
-version = "1.0.2"
-description = "a pythonic generic language server (pronounced like \"pie glass\")."
-optional = false
-python-versions = "<4,>=3.7"
-files = [
-    {file = "pygls-1.0.2-py3-none-any.whl", hash = "sha256:6d278d29fa6559b0f7a448263c85cb64ec6e9369548b02f1a7944060848b21f9"},
-    {file = "pygls-1.0.2.tar.gz", hash = "sha256:888ed63d1f650b4fc64d603d73d37545386ec533c0caac921aed80f80ea946a4"},
-]
-
-[package.dependencies]
-lsprotocol = "*"
-typeguard = ">=3,<4"
-
-[package.extras]
-dev = ["bandit (==1.7.4)", "flake8 (==4.0.1)", "mypy (==0.961)"]
-docs = ["sphinx (==5.0.1)", "sphinx-rtd-theme (==1.0.0)"]
-test = ["pytest (==7.1.2)", "pytest-asyncio (==0.18.3)"]
-ws = ["websockets (==10.*)"]
-
-[[package]]
-name = "pylspclient"
-version = "0.0.2"
-description = "LSP client implementation in Python"
-optional = false
-python-versions = "*"
-files = [
-    {file = "pylspclient-0.0.2-py3-none-any.whl", hash = "sha256:a75a712795f97fda001cfda9a0a2339d3bc043eec3766b92aeced632a05d338e"},
-    {file = "pylspclient-0.0.2.tar.gz", hash = "sha256:0681ff1275392e878e0ce950f041e2b0838605c28069ac019a005bd17970ba35"},
-]
 
 [[package]]
 name = "pyright"
@@ -489,24 +446,6 @@ files = [
 ]
 
 [[package]]
-name = "typeguard"
-version = "3.0.2"
-description = "Run-time type checker for Python"
-optional = false
-python-versions = ">=3.7.4"
-files = [
-    {file = "typeguard-3.0.2-py3-none-any.whl", hash = "sha256:bbe993854385284ab42fd5bd3bee6f6556577ce8b50696d6cb956d704f286c8e"},
-    {file = "typeguard-3.0.2.tar.gz", hash = "sha256:fee5297fdb28f8e9efcb8142b5ee219e02375509cd77ea9d270b5af826358d5a"},
-]
-
-[package.dependencies]
-typing-extensions = {version = ">=4.4.0", markers = "python_version < \"3.11\""}
-
-[package.extras]
-doc = ["packaging", "sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme"]
-test = ["mypy (>=0.991)", "pytest (>=7)"]
-
-[[package]]
 name = "typing-extensions"
 version = "4.7.1"
 description = "Backported and Experimental Type Hints for Python 3.7+"
@@ -552,4 +491,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "43103790b3492bccaf275a34c6fdfcff8e970cfcc535441ed0eb6a862161f857"
+content-hash = "c03eb8d224da230f56724b405a7f4d39d81e7085c671076c1eee4368090d5062"
