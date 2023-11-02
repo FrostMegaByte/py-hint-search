@@ -10,6 +10,9 @@ from lsprotocol.types import (
     DidOpenTextDocumentParams,
     DidChangeTextDocumentParams,
     VersionedTextDocumentIdentifier,
+    TextDocumentContentChangeEvent_Type1,
+    Range,
+    Position,
     TextDocumentContentChangeEvent_Type2,
     InitializeParams,
     ClientCapabilities,
@@ -115,6 +118,28 @@ class FakeEditor:
             version=self.edit_document.version,
         )
         change = TextDocumentContentChangeEvent_Type2(text=new_python_code)
+        self.lsp_client.did_change(
+            DidChangeTextDocumentParams(
+                text_document=document,
+                content_changes=[change],
+            )
+        )
+
+    def change_part_of_file(self, new_python_snippet: str, modified_location):
+        self.modified_location = modified_location
+        self.edit_document.version += 1
+        document = VersionedTextDocumentIdentifier(
+            uri=self.edit_document.uri,
+            version=self.edit_document.version,
+        )
+        pos = self.modified_location
+        change = TextDocumentContentChangeEvent_Type1(
+            range=Range(
+                start=Position(line=pos.start.line - 1, character=pos.start.column),
+                end=Position(line=pos.end.line - 1, character=pos.end.column),
+            ),
+            text=new_python_snippet,
+        )
         self.lsp_client.did_change(
             DidChangeTextDocumentParams(
                 text_document=document,

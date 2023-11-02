@@ -1,13 +1,17 @@
 from typing import Dict, List, Optional, Tuple
 import libcst as cst
 import libcst.matchers as m
+from libcst.metadata import PositionProvider
 
 
 class ParameterTypeAnnotationInserter(cst.CSTTransformer):
+    METADATA_DEPENDENCIES = (PositionProvider,)
+
     def __init__(self, parameter: str, annotation: str, function_name: str):
         self.parameter = parameter
         self.annotation = annotation
         self.function_name = function_name
+        self.updated_function_location = None
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
@@ -15,6 +19,9 @@ class ParameterTypeAnnotationInserter(cst.CSTTransformer):
         if m.matches(updated_node.name, m.Name(self.function_name)):
             for i, param in enumerate(updated_node.params.params):
                 if m.matches(param.name, m.Name(self.parameter)):
+                    self.updated_function_location = self.get_metadata(
+                        PositionProvider, original_node
+                    )
                     annotation = (
                         cst.Annotation(cst.parse_expression(self.annotation))
                         if self.annotation != ""
@@ -30,9 +37,12 @@ class ParameterTypeAnnotationInserter(cst.CSTTransformer):
 
 
 class ReturnTypeAnnotationInserter(cst.CSTTransformer):
+    METADATA_DEPENDENCIES = (PositionProvider,)
+
     def __init__(self, annotation: str, function_name: str):
         self.annotation = annotation
         self.function_name = function_name
+        self.updated_function_location = None
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
@@ -41,6 +51,9 @@ class ReturnTypeAnnotationInserter(cst.CSTTransformer):
             m.matches(updated_node.returns, m.Annotation())
             or updated_node.returns is None
         ):
+            self.updated_function_location = self.get_metadata(
+                PositionProvider, original_node
+            )
             annotation = (
                 cst.Annotation(cst.parse_expression(self.annotation))
                 if self.annotation != ""
@@ -59,8 +72,9 @@ def insert_parameter_annotation(
     transformer = ParameterTypeAnnotationInserter(
         parameter_name, annotation, function_name
     )
-    modified_tree = tree.visit(transformer)
-    return modified_tree
+    wrapper = cst.MetadataWrapper(tree)
+    modified_tree = wrapper.visit(transformer)
+    return modified_tree, transformer.updated_function_location
 
 
 def insert_return_annotation(
@@ -69,8 +83,9 @@ def insert_return_annotation(
     function_name: str = "",
 ):
     transformer = ReturnTypeAnnotationInserter(annotation, function_name)
-    modified_tree = tree.visit(transformer)
-    return modified_tree
+    wrapper = cst.MetadataWrapper(tree)
+    modified_tree = wrapper.visit(transformer)
+    return modified_tree, transformer.updated_function_location
 
 
 class TypingCollector(cst.CSTVisitor):

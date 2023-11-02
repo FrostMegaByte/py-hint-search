@@ -1,8 +1,10 @@
-import logging
-import re
-from typing import Any, Dict, List
+from typing import Any, Dict
 import typing
 import libcst as cst
+from libcst.metadata import PositionProvider
+import logging
+import re
+
 from annotation_inserter import insert_parameter_annotation, insert_return_annotation
 from classes_gatherer import get_import_module_path
 from fake_editor import FakeEditor
@@ -144,7 +146,7 @@ def depth_first_traversal(
             continue
 
         # Add type annotation to source code
-        modified_tree = (
+        modified_tree, modified_location = (
             insert_return_annotation(
                 modified_trees[layer_index],
                 type_annotation,
@@ -162,7 +164,18 @@ def depth_first_traversal(
         # print(modified_tree.code)
         # print("-----------------------------------")
 
-        editor.change_file(modified_tree.code)
+        partial_tree = None
+        wrapper = cst.MetadataWrapper(modified_tree)
+        positions = wrapper.resolve(PositionProvider)
+        for node, position in positions.items():
+            if position == modified_location:
+                partial_tree = cst.Module(body=[node])
+
+        editor.t = modified_tree.code
+        if partial_tree is not None:
+            editor.change_part_of_file(partial_tree.code, modified_location)
+        else:
+            editor.change_file(modified_tree.code)
 
         # On error, change pointers to try next type annotation
         if editor.has_diagnostic_error():
