@@ -148,13 +148,13 @@ def depth_first_traversal(
             insert_return_annotation(
                 modified_trees[layer_index],
                 type_annotation,
-                type_slot["func_name"][-1],
+                type_slot["func_name"],
             )
             if type_slot["param_name"] == "return"
             else insert_parameter_annotation(
                 modified_trees[layer_index],
                 type_annotation,
-                type_slot["func_name"][-1],
+                type_slot["func_name"],
                 type_slot["param_name"],
             )
         )
