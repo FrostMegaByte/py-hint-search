@@ -3,13 +3,14 @@ import subprocess
 
 
 def create_typestubs(project_path):
-    base_dir = project_path.rsplit("/", 1)[0]
+    os.chdir(os.path.abspath(os.path.join(project_path, "..")))
+    working_directory = os.getcwd()
+
     python_subdirectories = get_subdirectories(project_path)
     python_subdirectories.reverse()
-    os.chdir(base_dir)
 
     for subdirectory in python_subdirectories:
-        subdirectory_path = os.path.join(base_dir, subdirectory)
+        subdirectory_path = os.path.join(working_directory, subdirectory)
         init_file_path = os.path.join(subdirectory_path, "__init__.py")
         init_file_exists = os.path.exists(init_file_path)
 
@@ -25,9 +26,10 @@ def create_typestubs(project_path):
         if not init_file_exists:
             os.remove(init_file_path)
             init_stub_file_path = os.path.join(
-                base_dir, "typings", subdirectory, "__init__.pyi"
+                working_directory, "typings", subdirectory, "__init__.pyi"
             )
-            os.remove(init_stub_file_path)
+            if os.path.exists(init_stub_file_path):
+                os.remove(init_stub_file_path)
 
 
 def get_subdirectories(project_path):
@@ -45,3 +47,8 @@ def get_subdirectories(project_path):
             subdirectories.append(subdirectory)
 
     return subdirectories
+
+
+# create_typestubs(
+#     "D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example"
+# )
