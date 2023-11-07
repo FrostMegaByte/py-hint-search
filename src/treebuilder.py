@@ -1,8 +1,10 @@
 import logging
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict
 import typing
 import libcst as cst
+from colorama import Fore
+
 from annotation_inserter import insert_parameter_annotation, insert_return_annotation
 from classes_gatherer import get_import_module_path
 from fake_editor import FakeEditor
@@ -183,13 +185,13 @@ def depth_first_traversal(
             layer_index += 1
 
     if layer_index < 0:
-        print("No possible combination of type annotations found...")
+        print(f"{Fore.RED}No possible combination of type annotations found...")
         logger = logging.getLogger(__name__)
         logger.error("No possible combination of type annotations found...")
         return original_source_code_tree
 
     if layer_index == number_of_type_slots:
-        print("Found a combination of type annotations!")
+        print(f"{Fore.GREEN}Found a combination of type annotations!")
         logger = logging.getLogger(__name__)
         logger.info("Found a combination of type annotations!")
 

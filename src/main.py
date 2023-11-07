@@ -3,6 +3,8 @@ import argparse
 import libcst as cst
 from datetime import datetime
 import logging
+import colorama
+from colorama import Fore
 
 from api import Type4PyException, get_type4py_predictions
 from annotation_inserter import TypingCollector
@@ -15,6 +17,8 @@ from treebuilder import (
 )
 from typestubs_creator import create_typestubs
 from typestubs_parser import PyrightAnnotationCollector, PyrightAnnotationTransformer
+
+colorama.init(autoreset=True)
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -103,7 +107,7 @@ def main():
                 os.path.join(working_directory, "type-annotated", relative_path, file)
             )
             if os.path.exists(type_annotated_file):
-                print(f"{file} already annotated. Skipping...\n")
+                print(f"{Fore.GREEN}{file} already annotated. Skipping...\n")
                 logger.info(f"{file} already annotated. Skipping...")
                 continue
 
@@ -111,8 +115,10 @@ def main():
             editor.open_file(file_path)
 
             if editor.has_diagnostic_error():
-                print(f"'{file}' contains Pyright error at the start. Skipping...\n")
-                logger.info(
+                print(
+                    f"{Fore.RED}'{file}' contains Pyright error at the start. Skipping...\n"
+                )
+                logger.warning(
                     f"'{file}' contains Pyright error at the start. Skipping..."
                 )
                 # TODO: Can make this more specific by checking line and column positions of the error
@@ -120,6 +126,12 @@ def main():
                 continue
 
             python_code = editor.edit_document.text
+            if python_code == "":
+                print(f"{Fore.BLUE}'{file}' is an empty file. Skipping...\n")
+                logger.info(f"'{file}' is an empty file. Skipping...")
+                editor.close_file()
+                continue
+
             source_code_tree = cst.parse_module(python_code)
 
             # Add type annotations inferred by Pyright
@@ -143,8 +155,10 @@ def main():
             try:
                 ml_predictions = get_type4py_predictions(source_code_tree.code)
             except Type4PyException:
-                print(f"'{file}' cannot be parsed by Type4Py. Skipping...\n")
-                logger.info(f"'{file}' cannot be parsed by Type4Py. Skipping...")
+                print(
+                    f"{Fore.YELLOW}'{file}' cannot be parsed by Type4Py. Skipping...\n"
+                )
+                logger.warning(f"'{file}' cannot be parsed by Type4Py. Skipping...")
                 editor.close_file()
                 continue
 
@@ -154,9 +168,14 @@ def main():
             )
 
             number_of_type_slots = len(search_tree_layers)
+            if number_of_type_slots == 0:
+                print(f"{Fore.BLUE}'{file}' has no type slots to fill. Skipping...\n")
+                logger.info(f"'{file}' has no type slots to fill. Skipping...")
+                editor.close_file()
+                continue
             if number_of_type_slots >= 100:
-                print(f"'{file}' contains too many type slots. Skipping...\n")
-                logger.info(f"'{file}' contains too many type slots. Skipping...")
+                print(f"{Fore.RED}'{file}' contains too many type slots. Skipping...\n")
+                logger.warning(f"'{file}' contains too many type slots. Skipping...")
                 editor.close_file()
                 continue
 
