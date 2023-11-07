@@ -38,8 +38,8 @@ def get_import_module_path(
             current_file,
         )
         path_list = relative_path.removesuffix(".py").split("\\")
-        # TODO: Check if [1:] is correct in all cases
-        module_path = ".".join(path_list[1:])
+        path_list = [x for x in path_list if x != ".."]
+        module_path = ".".join(path_list)
         return module_path
     else:
         return None
