@@ -1,8 +1,9 @@
 import os
 import subprocess
+from typing import List
 
 
-def create_typestubs(project_path):
+def create_typestubs(project_path: str) -> None:
     os.chdir(os.path.abspath(os.path.join(project_path, "..")))
     working_directory = os.getcwd()
 
@@ -32,7 +33,8 @@ def create_typestubs(project_path):
                 os.remove(init_stub_file_path)
 
 
-def get_subdirectories(project_path):
+# TODO: INSERT TYPE ANNOTATION FOR RETURN VALUE (List[str] is my quess)
+def get_subdirectories(project_path: str) -> List[str]:
     subdirectories = []
     base_dir = project_path.rsplit("/", 1)[0]
     for root, dirs, files in os.walk(project_path):

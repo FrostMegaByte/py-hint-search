@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Any, Dict
+from typing import Any, Dict, List, Tuple, Union
 import typing
 import libcst as cst
 from colorama import Fore
@@ -29,8 +29,13 @@ BUILT_IN_TYPES = {
     "",
 }
 
+TypeSlotPredictions = List[List[Union[str, float]]]
 
-def transform_predictions_to_array_to_process(func_predictions, type_annotated):
+
+def transform_predictions_to_array_to_process(
+    func_predictions: List[Dict[str, Any]],
+    type_annotated: Dict[Tuple[str, ...], List[str]],
+) -> List[TypeSlotPredictions]:
     array_to_process = []
     for func in func_predictions:
         func_name = func["q_name"].split(".")
@@ -64,7 +69,9 @@ def transform_predictions_to_array_to_process(func_predictions, type_annotated):
     return array_to_process
 
 
-def build_tree(search_tree_layers, top_k: int) -> Dict[str, Dict[str, Any]]:
+def build_tree(
+    search_tree_layers: List[TypeSlotPredictions], top_k: int
+) -> Dict[str, Dict[str, Any]]:
     search_tree = {}
     for layer_index in range(len(search_tree_layers)):
         func_name, param_name = search_tree_layers[layer_index].pop(0)
@@ -82,7 +89,7 @@ def depth_first_traversal(
     original_source_code_tree: cst.Module,
     editor: FakeEditor,
     number_of_type_slots: int,
-    all_project_classes,
+    all_project_classes: Dict[str, str],
 ):
     layer_index = 0
     layer_specific_indices = [0] * number_of_type_slots

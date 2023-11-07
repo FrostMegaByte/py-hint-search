@@ -6,7 +6,7 @@ import logging
 import colorama
 from colorama import Fore
 
-from api import Type4PyException, get_type4py_predictions
+from type4py_api import Type4PyException, get_type4py_predictions
 from annotation_inserter import TypingCollector
 from classes_gatherer import get_all_classes_in_project
 from fake_editor import FakeEditor
@@ -26,7 +26,7 @@ def parse_arguments() -> argparse.Namespace:
         description="Python type annotator based on Pyright feedback."
     )
 
-    def dir_path(string):
+    def dir_path(string: str) -> str:
         if os.path.isdir(string):
             return string
         else:

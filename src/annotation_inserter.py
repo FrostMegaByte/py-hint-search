@@ -4,7 +4,9 @@ import libcst.matchers as m
 
 
 class ParameterTypeAnnotationInserter(cst.CSTTransformer):
-    def __init__(self, parameter: str, annotation: str, function: str):
+    def __init__(
+        self, parameter: str, annotation: str, function: Tuple[str, ...]
+    ) -> None:
         self.stack: List[Tuple[str, ...]] = []
         self.parameter = parameter
         self.annotation = annotation
@@ -48,10 +50,10 @@ class ParameterTypeAnnotationInserter(cst.CSTTransformer):
 
 
 class ReturnTypeAnnotationInserter(cst.CSTTransformer):
-    def __init__(self, annotation: str, function_name: str):
+    def __init__(self, annotation: str, function: Tuple[str, ...]) -> None:
         self.stack: List[Tuple[str, ...]] = []
         self.annotation = annotation
-        self.function_name = function_name
+        self.function = function
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
         self.stack.append(node.name.value)
@@ -73,7 +75,7 @@ class ReturnTypeAnnotationInserter(cst.CSTTransformer):
         current_function = tuple(self.stack)
         self.stack.pop()
 
-        if current_function == self.function_name:
+        if current_function == self.function:
             if updated_node.returns is None:
                 annotation = (
                     cst.Annotation(cst.parse_expression(self.annotation))
@@ -106,7 +108,7 @@ def insert_return_annotation(
 
 
 class TypingCollector(cst.CSTVisitor):
-    def __init__(self):
+    def __init__(self) -> None:
         self.stack: List[Tuple[str, ...]] = []
         self.type_annotated: Dict[Tuple[str, ...], List[str]] = {}
 

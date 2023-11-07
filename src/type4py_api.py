@@ -1,13 +1,14 @@
+from typing import Any, Dict, List
 import requests
 
 
 class Type4PyException(Exception):
-    def __init__(self, message):
+    def __init__(self, message: str) -> None:
         super().__init__(message)
         self.message = message
 
 
-def get_type4py_predictions(python_code: str):
+def get_type4py_predictions(python_code: str) -> List[Dict[str, Any]]:
     # r = requests.post("https://type4py.com/api/predict?tc=0", f.read())
     response = requests.post("http://localhost:5001/api/predict?tc=0", python_code)
     json_response = response.json()

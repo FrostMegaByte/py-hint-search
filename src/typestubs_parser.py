@@ -4,7 +4,7 @@ import libcst as cst
 
 
 class PyrightAnnotationCollector(cst.CSTVisitor):
-    def __init__(self):
+    def __init__(self) -> None:
         self.stack: List[Tuple[str, ...]] = []
         self.annotations: Dict[
             Tuple[str, ...],
@@ -17,7 +17,7 @@ class PyrightAnnotationCollector(cst.CSTVisitor):
     def leave_ClassDef(self, node: cst.ClassDef) -> None:
         self.stack.pop()
 
-    def visit_FunctionDef(self, node: cst.FunctionDef) -> Optional[bool]:
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
         self.stack.append(node.name.value)
         if node.returns is None and node.body.header.comment is not None:
             comment = node.body.header.comment.value
@@ -45,17 +45,17 @@ class PyrightAnnotationTransformer(cst.CSTTransformer):
 
     def leave_ClassDef(
         self, original_node: cst.ClassDef, updated_node: cst.ClassDef
-    ) -> cst.CSTNode:
+    ) -> cst.ClassDef:
         self.stack.pop()
         return updated_node
 
-    def visit_FunctionDef(self, node: cst.FunctionDef) -> Optional[bool]:
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
         self.stack.append(node.name.value)
         return False
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
-    ) -> cst.CSTNode:
+    ) -> cst.FunctionDef:
         key = tuple(self.stack)
         self.stack.pop()
         if key in self.annotations:

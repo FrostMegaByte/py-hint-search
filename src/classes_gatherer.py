@@ -1,10 +1,10 @@
 import logging
 import os
 import ast
-from typing import Dict
+from typing import Dict, Optional
 
 
-def get_classes_from_file(file_path) -> Dict[str, str]:
+def get_classes_from_file(file_path: str) -> Dict[str, str]:
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             tree = ast.parse(f.read())
@@ -21,7 +21,7 @@ def get_classes_from_file(file_path) -> Dict[str, str]:
     return class_dict
 
 
-def get_all_classes_in_project(project_path) -> Dict[str, str]:
+def get_all_classes_in_project(project_path: str) -> Dict[str, str]:
     classes = {}
     for root, _, files in os.walk(project_path):
         for file in files:
@@ -33,7 +33,7 @@ def get_all_classes_in_project(project_path) -> Dict[str, str]:
 
 def get_import_module_path(
     project_classes: Dict[str, str], annotation: str, current_file: str
-) -> str:
+) -> Optional[str]:
     if annotation in project_classes:
         relative_path = os.path.relpath(
             project_classes[annotation],
