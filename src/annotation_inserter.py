@@ -4,11 +4,11 @@ import libcst.matchers as m
 
 
 class ParameterTypeAnnotationInserter(cst.CSTTransformer):
-    def __init__(self, parameter: str, annotation: str, function_name: str):
+    def __init__(self, parameter: str, annotation: str, function: str):
         self.stack: List[Tuple[str, ...]] = []
         self.parameter = parameter
         self.annotation = annotation
-        self.function_name = function_name
+        self.function = function
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
         self.stack.append(node.name.value)
@@ -30,7 +30,7 @@ class ParameterTypeAnnotationInserter(cst.CSTTransformer):
         current_function = tuple(self.stack)
         self.stack.pop()
 
-        if current_function == self.function_name:
+        if current_function == self.function:
             for i, param in enumerate(updated_node.params.params):
                 if m.matches(param.name, m.Name(self.parameter)):
                     annotation = (
@@ -87,12 +87,10 @@ class ReturnTypeAnnotationInserter(cst.CSTTransformer):
 def insert_parameter_annotation(
     tree: cst.Module,
     annotation: str,
-    function_name: str = "",
+    function: Tuple[str, ...] = None,
     parameter_name: str = "",
 ):
-    transformer = ParameterTypeAnnotationInserter(
-        parameter_name, annotation, function_name
-    )
+    transformer = ParameterTypeAnnotationInserter(parameter_name, annotation, function)
     modified_tree = tree.visit(transformer)
     return modified_tree
 
@@ -100,9 +98,9 @@ def insert_parameter_annotation(
 def insert_return_annotation(
     tree: cst.Module,
     annotation: str,
-    function_name: str = "",
+    function: Tuple[str, ...] = None,
 ):
-    transformer = ReturnTypeAnnotationInserter(annotation, function_name)
+    transformer = ReturnTypeAnnotationInserter(annotation, function)
     modified_tree = tree.visit(transformer)
     return modified_tree
 

@@ -29,6 +29,3 @@ def get_type4py_predictions(python_code: str):
         )
     )
     return type_predictions
-
-
-# get_type4py_predictions_example()
