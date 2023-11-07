@@ -1,3 +1,4 @@
+import logging
 import re
 import subprocess
 import time
@@ -75,6 +76,12 @@ class FakeEditor:
         self.diagnostics = jsonrpc_message["params"]["diagnostics"]
         self.received_diagnostics = True
 
+    def _wait_for_diagnostics(self):
+        # Wait for diagnostics to be received. Currently the best async solution I could come up with
+        while not self.received_diagnostics:
+            time.sleep(0.001)
+        self.received_diagnostics = False
+
     def start(self, root_uri: str, workspace_folders):
         self.lsp_client.initialize(
             InitializeParams(
@@ -94,9 +101,11 @@ class FakeEditor:
     def open_file(self, file_path: str):
         uri = f"file:///{file_path}"
         try:
-            python_code = open(file_path, "r").read()
-        except UnicodeDecodeError:
             python_code = open(file_path, "r", encoding="utf-8").read()
+        except Exception as e:
+            print(e)
+            logger = logging.getLogger(__name__)
+            logger.error(e)
 
         self.edit_document = TextDocumentItem(
             uri=uri,
@@ -107,6 +116,7 @@ class FakeEditor:
         self.lsp_client.did_open(
             DidOpenTextDocumentParams(text_document=self.edit_document)
         )
+        self._wait_for_diagnostics()
 
     def change_file(self, new_python_code: str):
         self.edit_document.version += 1
@@ -121,19 +131,14 @@ class FakeEditor:
                 content_changes=[change],
             )
         )
+        self._wait_for_diagnostics()
 
     def has_diagnostic_error(self):
         DIAGNOSTIC_ERROR_PATTERN = r"cannot be assigned to|is not defined|Operator \".\" not supported for types \".*\" and \".*\""
         # TODO: Check that the diagnostic error is only for that function where the annotation was changed
 
-        # Wait for diagnostics to be received. Currently the best async solution I could come up with
-        while not self.received_diagnostics:  # TODO: Add timeout
-            time.sleep(0.001)
-        self.received_diagnostics = False
-
         for diagnostic in self.diagnostics:
             if len(re.findall(DIAGNOSTIC_ERROR_PATTERN, diagnostic["message"])) > 0:
-                # print("Diagnostic error found!")
                 return True
         return False
 
@@ -141,6 +146,7 @@ class FakeEditor:
         document = TextDocumentIdentifier(uri=self.edit_document.uri)
         self.lsp_client.did_close(DidCloseTextDocumentParams(text_document=document))
         self.edit_document = None
+        self._wait_for_diagnostics()
 
     def stop(self):
         self.lsp_client.shutdown()

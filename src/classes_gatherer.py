@@ -1,3 +1,4 @@
+import logging
 import os
 import ast
 from typing import Dict
@@ -5,11 +6,12 @@ from typing import Dict
 
 def get_classes_from_file(file_path) -> Dict[str, str]:
     try:
-        with open(file_path, "r") as f:
-            tree = ast.parse(f.read())
-    except UnicodeDecodeError:
         with open(file_path, "r", encoding="utf-8") as f:
             tree = ast.parse(f.read())
+    except Exception as e:
+        print(e)
+        logger = logging.getLogger(__name__)
+        logger.error(e)
 
     class_dict = {
         node.name: file_path

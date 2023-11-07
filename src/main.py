@@ -95,15 +95,25 @@ def main():
     for root, dirs, files in os.walk(args.project_path):
         python_files = [file for file in files if file.endswith(".py")]
         for file in python_files:
-            print(f"Processing file: {file}")
-            logger.info(f"Processing file: {file}")
+            relative_path = os.path.relpath(root, args.project_path)
+            print(f"Processing file: {os.path.join(relative_path, file)}")
+            logger.info(f"Processing file: {os.path.join(relative_path, file)}")
+
+            type_annotated_file = os.path.abspath(
+                os.path.join(working_directory, "type-annotated", relative_path, file)
+            )
+            if os.path.exists(type_annotated_file):
+                print(f"{file} already annotated. Skipping...\n")
+                logger.info(f"{file} already annotated. Skipping...")
+                continue
+
             file_path = os.path.join(root, file)
             editor.open_file(file_path)
 
             if editor.has_diagnostic_error():
-                print(f"'{file}' contains Pyright error at the start, so skipping...\n")
+                print(f"'{file}' contains Pyright error at the start. Skipping...\n")
                 logger.info(
-                    f"'{file}' contains Pyright error at the start, so skipping..."
+                    f"'{file}' contains Pyright error at the start. Skipping..."
                 )
                 # TODO: Can make this more specific by checking line and column positions of the error
                 editor.close_file()
@@ -133,12 +143,22 @@ def main():
             try:
                 ml_predictions = get_type4py_predictions(source_code_tree.code)
             except Type4PyException:
+                print(f"'{file}' cannot be parsed by Type4Py. Skipping...\n")
+                logger.info(f"'{file}' cannot be parsed by Type4Py. Skipping...")
+                editor.close_file()
                 continue
 
             # Transform the predictions and filter out already type annotated parameters and return types
             search_tree_layers = transform_predictions_to_array_to_process(
                 ml_predictions, visitor.type_annotated
             )
+
+            number_of_type_slots = len(search_tree_layers)
+            if number_of_type_slots >= 100:
+                print(f"'{file}' contains too many type slots. Skipping...\n")
+                logger.info(f"'{file}' contains too many type slots. Skipping...")
+                editor.close_file()
+                continue
 
             # Build the search tree
             search_tree = build_tree(search_tree_layers, args.top_k)
@@ -148,19 +168,18 @@ def main():
                 search_tree,
                 source_code_tree,
                 editor,
-                len(search_tree_layers),
+                number_of_type_slots,
                 all_project_classes,
             )
 
             # Write the type annotated source code to a file
-            relative_path = os.path.relpath(root, args.project_path)
             output_typed_directory = os.path.abspath(
                 os.path.join(typed_path, relative_path)
             )
             os.makedirs(output_typed_directory, exist_ok=True)
-            open(os.path.join(output_typed_directory, file), "w").write(
-                type_annotated_source_code_tree.code
-            )
+            open(
+                os.path.join(output_typed_directory, file), "w", encoding="utf-8"
+            ).write(type_annotated_source_code_tree.code)
 
             editor.close_file()
             print()
