@@ -33,7 +33,7 @@ def transform_predictions_to_array_to_process(func_predictions, type_annotated):
     for func in func_predictions:
         func_name = func["q_name"].split(".")
         if "<locals>" in func_name:
-            func_name.remove("<locals>")
+            func_name = [x for x in func_name if x != "<locals>"]
         func_name = tuple(func_name)
 
         # First try parameters
@@ -159,8 +159,8 @@ def depth_first_traversal(
             )
         )
 
-        print(modified_tree.code)
-        print("-----------------------------------")
+        # print(modified_tree.code)
+        # print("-----------------------------------")
 
         editor.change_file(modified_tree.code)
 
