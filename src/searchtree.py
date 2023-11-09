@@ -5,10 +5,12 @@ import typing
 import libcst as cst
 from colorama import Fore
 
-from annotation_inserter import insert_parameter_annotation, insert_return_annotation
-from classes_gatherer import get_import_module_path
+from annotations import (
+    insert_parameter_annotation,
+    insert_return_annotation,
+)
 from fake_editor import FakeEditor
-from import_inserter import ImportInserter
+from imports import get_import_module_path, ImportInserter
 
 BUILT_IN_TYPES = {
     "bool",

@@ -7,16 +7,19 @@ import colorama
 from colorama import Fore
 
 from type4py_api import Type4PyException, get_type4py_predictions
-from annotation_inserter import TypingCollector
-from classes_gatherer import get_all_classes_in_project
+from pyright_typestubs_creator import create_typestubs
+from annotations import (
+    AlreadyTypeAnnotatedCollector,
+    PyrightTypeAnnotationCollector,
+    PyrightTypeAnnotationTransformer,
+)
 from fake_editor import FakeEditor
-from treebuilder import (
+from imports import get_all_classes_in_project
+from searchtree import (
     transform_predictions_to_array_to_process,
     build_tree,
     depth_first_traversal,
 )
-from typestubs_creator import create_typestubs
-from typestubs_parser import PyrightAnnotationCollector, PyrightAnnotationTransformer
 
 colorama.init(autoreset=True)
 
@@ -142,13 +145,13 @@ def main():
                 with open(stub_file, "r") as f:
                     stub_code = f.read()
                 stub_tree = cst.parse_module(stub_code)
-                visitor = PyrightAnnotationCollector()
+                visitor = PyrightTypeAnnotationCollector()
                 stub_tree.visit(visitor)
-                transformer = PyrightAnnotationTransformer(visitor.annotations)
+                transformer = PyrightTypeAnnotationTransformer(visitor.annotations)
                 source_code_tree = source_code_tree.visit(transformer)
 
             # Get already type annotated parameters and return types
-            visitor = TypingCollector()
+            visitor = AlreadyTypeAnnotatedCollector()
             source_code_tree.visit(visitor)
 
             # Get ML type annotation predictions
@@ -164,7 +167,7 @@ def main():
 
             # Transform the predictions and filter out already type annotated parameters and return types
             search_tree_layers = transform_predictions_to_array_to_process(
-                ml_predictions, visitor.type_annotated
+                ml_predictions, visitor.already_type_annotated
             )
 
             number_of_type_slots = len(search_tree_layers)

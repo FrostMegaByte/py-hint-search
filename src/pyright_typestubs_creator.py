@@ -1,3 +1,4 @@
+import argparse
 import os
 import subprocess
 from typing import List
@@ -9,6 +10,7 @@ def create_typestubs(project_path: str) -> None:
 
     python_subdirectories = get_subdirectories(project_path)
     python_subdirectories.reverse()
+    print(working_directory)
 
     for subdirectory in python_subdirectories:
         subdirectory_path = os.path.join(working_directory, subdirectory)
@@ -33,7 +35,6 @@ def create_typestubs(project_path: str) -> None:
                 os.remove(init_stub_file_path)
 
 
-# TODO: INSERT TYPE ANNOTATION FOR RETURN VALUE (List[str] is my quess)
 def get_subdirectories(project_path: str) -> List[str]:
     subdirectories = []
     base_dir = project_path.rsplit("/", 1)[0]
@@ -51,6 +52,28 @@ def get_subdirectories(project_path: str) -> List[str]:
     return subdirectories
 
 
-# create_typestubs(
-#     "D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example"
-# )
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Python type annotator based on Pyright feedback."
+    )
+
+    def dir_path(string: str) -> str:
+        if os.path.isdir(string):
+            return string
+        else:
+            raise NotADirectoryError(string)
+
+    parser.add_argument(
+        "--project-path",
+        type=dir_path,
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
+        help="The path to the project which will be type annotated.",
+        required=True,
+    )
+
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = parse_arguments()
+    create_typestubs(args.project_path)
