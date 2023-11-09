@@ -65,8 +65,6 @@ def remove_pyright_config_file(project_path: str) -> None:
 
 
 def main():
-    ENABLE_PYRIGHT_ANNOTATIONS = False  # TODO: Doesn't work yet, since create_typestubs() has issues with finding imports
-
     args = parse_arguments()
     editor = FakeEditor()
 
@@ -87,6 +85,7 @@ def main():
 
     stubs_directory = "typings"
     stubs_path = os.path.abspath(os.path.join(working_directory, stubs_directory))
+    PYRIGHT_ANNOTATIONS_EXIST = os.path.isdir(stubs_path)
 
     typed_directory = "type-annotated"
     typed_path = os.path.abspath(os.path.join(working_directory, typed_directory))
@@ -94,8 +93,6 @@ def main():
     all_project_classes = get_all_classes_in_project(args.project_path)
 
     create_pyright_config_file(args.project_path)
-    if ENABLE_PYRIGHT_ANNOTATIONS:
-        create_typestubs(args.project_path)
     editor.start(root_uri, workspace_folders)
 
     # Walk through project directories and type annotate all python files
@@ -138,7 +135,7 @@ def main():
             source_code_tree = cst.parse_module(python_code)
 
             # Add type annotations inferred by Pyright
-            if ENABLE_PYRIGHT_ANNOTATIONS:
+            if PYRIGHT_ANNOTATIONS_EXIST:
                 relative_stub_subdirectory = os.path.relpath(root, working_directory)
                 stub_directory = os.path.join(stubs_path, relative_stub_subdirectory)
                 stub_file = os.path.join(stub_directory, file + "i")
