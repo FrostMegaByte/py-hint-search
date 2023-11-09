@@ -90,7 +90,7 @@ def main():
     typed_directory = "type-annotated"
     typed_path = os.path.abspath(os.path.join(working_directory, typed_directory))
 
-    all_project_classes = get_all_classes_in_project(args.project_path)
+    ALL_PROJECT_CLASSES = get_all_classes_in_project(args.project_path)
 
     create_pyright_config_file(args.project_path)
     editor.start(root_uri, workspace_folders)
@@ -188,7 +188,7 @@ def main():
                 source_code_tree,
                 editor,
                 number_of_type_slots,
-                all_project_classes,
+                ALL_PROJECT_CLASSES,
             )
 
             # Write the type annotated source code to a file
