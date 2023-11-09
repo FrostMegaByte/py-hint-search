@@ -13,6 +13,7 @@ pyright = "^1.1.326"
 pytest = "^7.4.2"
 requests = "^2.31.0"
 lsprotocol = "^2023.0.0b1"
+colorama = "^0.4.6"
 
 
 [build-system]

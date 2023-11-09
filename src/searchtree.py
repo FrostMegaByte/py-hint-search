@@ -1,14 +1,17 @@
-from typing import Any, Dict
+import logging
+import re
+from typing import Any, Dict, List, Tuple, Union
 import typing
 import libcst as cst
 from libcst.metadata import PositionProvider
-import logging
-import re
+from colorama import Fore
 
-from annotation_inserter import insert_parameter_annotation, insert_return_annotation
-from classes_gatherer import get_import_module_path
+from annotations import (
+    insert_parameter_annotation,
+    insert_return_annotation,
+)
 from fake_editor import FakeEditor
-from import_inserter import ImportInserter
+from imports import get_import_module_path, ImportInserter
 
 BUILT_IN_TYPES = {
     "bool",
@@ -29,13 +32,18 @@ BUILT_IN_TYPES = {
     "",
 }
 
+TypeSlotPredictions = List[List[Union[str, float]]]
 
-def transform_predictions_to_array_to_process(func_predictions, type_annotated):
+
+def transform_predictions_to_array_to_process(
+    func_predictions: List[Dict[str, Any]],
+    type_annotated: Dict[Tuple[str, ...], List[str]],
+) -> List[TypeSlotPredictions]:
     array_to_process = []
     for func in func_predictions:
         func_name = func["q_name"].split(".")
         if "<locals>" in func_name:
-            func_name.remove("<locals>")
+            func_name = [x for x in func_name if x != "<locals>"]
         func_name = tuple(func_name)
 
         # First try parameters
@@ -64,7 +72,9 @@ def transform_predictions_to_array_to_process(func_predictions, type_annotated):
     return array_to_process
 
 
-def build_tree(search_tree_layers, top_k: int) -> Dict[str, Dict[str, Any]]:
+def build_tree(
+    search_tree_layers: List[TypeSlotPredictions], top_k: int
+) -> Dict[str, Dict[str, Any]]:
     search_tree = {}
     for layer_index in range(len(search_tree_layers)):
         func_name, param_name = search_tree_layers[layer_index].pop(0)
@@ -82,7 +92,7 @@ def depth_first_traversal(
     original_source_code_tree: cst.Module,
     editor: FakeEditor,
     number_of_type_slots: int,
-    all_project_classes,
+    all_project_classes: Dict[str, str],
 ):
     layer_index = 0
     layer_specific_indices = [0] * number_of_type_slots
@@ -150,13 +160,13 @@ def depth_first_traversal(
             insert_return_annotation(
                 modified_trees[layer_index],
                 type_annotation,
-                type_slot["func_name"][-1],
+                type_slot["func_name"],
             )
             if type_slot["param_name"] == "return"
             else insert_parameter_annotation(
                 modified_trees[layer_index],
                 type_annotation,
-                type_slot["func_name"][-1],
+                type_slot["func_name"],
                 type_slot["param_name"],
             )
         )
@@ -171,7 +181,7 @@ def depth_first_traversal(
             if position == modified_location:
                 partial_tree = cst.Module(body=[node])
 
-        editor.t = modified_tree.code
+        editor.temp = modified_tree.code
         if partial_tree is not None:
             editor.change_part_of_file(partial_tree.code, modified_location)
         else:
@@ -196,13 +206,13 @@ def depth_first_traversal(
             layer_index += 1
 
     if layer_index < 0:
-        print("No possible combination of type annotations found...")
+        print(f"{Fore.RED}No possible combination of type annotations found...")
         logger = logging.getLogger(__name__)
         logger.error("No possible combination of type annotations found...")
         return original_source_code_tree
 
     if layer_index == number_of_type_slots:
-        print("Found a combination of type annotations!")
+        print(f"{Fore.GREEN}Found a combination of type annotations!")
         logger = logging.getLogger(__name__)
         logger.info("Found a combination of type annotations!")
 

@@ -1,6 +1,10 @@
+from __future__ import annotations
+import logging
 import re
 import subprocess
 import time
+from typing import Any, Dict, List
+
 from client.json_rpc_endpoint import JsonRpcEndpoint
 from client.lsp_client import LspClient
 from client.lsp_endpoint import LspEndpoint
@@ -32,12 +36,12 @@ class FakeEditor:
         self.diagnostics = []
 
     # Singleton class
-    def __new__(cls):
+    def __new__(cls) -> FakeEditor:
         if cls._self is None:
             cls._self = super().__new__(cls)
         return cls._self
 
-    def _get_LSP_client(self):
+    def _get_LSP_client(self) -> LspClient:
         self.process = subprocess.Popen(
             args=["pyright-langserver", "--stdio"],
             stdin=subprocess.PIPE,
@@ -52,7 +56,7 @@ class FakeEditor:
         )
         return LspClient(lsp_endpoint)
 
-    def _get_editor_capabilities(self):
+    def _get_editor_capabilities(self) -> ClientCapabilities:
         return ClientCapabilities(
             workspace={
                 "apply_edit": True,
@@ -74,11 +78,17 @@ class FakeEditor:
             },
         )
 
-    def _handle_diagnostics(self, jsonrpc_message):
+    def _handle_diagnostics(self, jsonrpc_message: Dict[str, Any]) -> None:
         self.diagnostics = jsonrpc_message["params"]["diagnostics"]
         self.received_diagnostics = True
 
-    def start(self, root_uri: str, workspace_folders):
+    def _wait_for_diagnostics(self) -> None:
+        # Wait for diagnostics to be received. Currently the best async solution I could come up with
+        while not self.received_diagnostics:
+            time.sleep(0.001)
+        self.received_diagnostics = False
+
+    def start(self, root_uri: str, workspace_folders: List[Dict[str, str]]) -> None:
         self.lsp_client.initialize(
             InitializeParams(
                 process_id=self.process.pid,
@@ -94,12 +104,14 @@ class FakeEditor:
         self.lsp_client.initialized()
         time.sleep(1)
 
-    def open_file(self, file_path: str):
+    def open_file(self, file_path: str) -> None:
         uri = f"file:///{file_path}"
         try:
-            python_code = open(file_path, "r").read()
-        except UnicodeDecodeError:
             python_code = open(file_path, "r", encoding="utf-8").read()
+        except Exception as e:
+            print(e)
+            logger = logging.getLogger(__name__)
+            logger.error(e)
 
         self.edit_document = TextDocumentItem(
             uri=uri,
@@ -110,8 +122,9 @@ class FakeEditor:
         self.lsp_client.did_open(
             DidOpenTextDocumentParams(text_document=self.edit_document)
         )
+        self._wait_for_diagnostics()
 
-    def change_file(self, new_python_code: str):
+    def change_file(self, new_python_code: str) -> None:
         self.edit_document.version += 1
         document = VersionedTextDocumentIdentifier(
             uri=self.edit_document.uri,
@@ -124,6 +137,7 @@ class FakeEditor:
                 content_changes=[change],
             )
         )
+        self._wait_for_diagnostics()
 
     def change_part_of_file(self, new_python_snippet: str, modified_location):
         self.modified_location = modified_location
@@ -146,27 +160,23 @@ class FakeEditor:
                 content_changes=[change],
             )
         )
+        self._wait_for_diagnostics()
 
     def has_diagnostic_error(self):
         DIAGNOSTIC_ERROR_PATTERN = r"cannot be assigned to|is not defined|Operator \".\" not supported for types \".*\" and \".*\""
         # TODO: Check that the diagnostic error is only for that function where the annotation was changed
 
-        # Wait for diagnostics to be received. Currently the best async solution I could come up with
-        while not self.received_diagnostics:  # TODO: Add timeout
-            time.sleep(0.001)
-        self.received_diagnostics = False
-
         for diagnostic in self.diagnostics:
             if len(re.findall(DIAGNOSTIC_ERROR_PATTERN, diagnostic["message"])) > 0:
-                # print("Diagnostic error found!")
                 return True
         return False
 
-    def close_file(self):
+    def close_file(self) -> None:
         document = TextDocumentIdentifier(uri=self.edit_document.uri)
         self.lsp_client.did_close(DidCloseTextDocumentParams(text_document=document))
         self.edit_document = None
+        self._wait_for_diagnostics()
 
-    def stop(self):
+    def stop(self) -> None:
         self.lsp_client.shutdown()
         self.lsp_client.exit()
