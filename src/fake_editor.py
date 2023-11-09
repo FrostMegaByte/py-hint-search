@@ -33,6 +33,7 @@ class FakeEditor:
         self.lsp_client = self._get_LSP_client()
         self.capabilities = self._get_editor_capabilities()
         self.received_diagnostics = False
+        self.modified_location = None
         self.diagnostics = []
 
     # Singleton class
@@ -162,12 +163,27 @@ class FakeEditor:
         )
         self._wait_for_diagnostics()
 
+    def _error_in_modified_location(self, range):
+        return (
+            self.modified_location is not None
+            and range["start"]["line"] >= self.modified_location.start.line
+            and range["start"]["character"] >= self.modified_location.start.column
+            and range["end"]["line"] <= self.modified_location.end.line
+            and range["end"]["character"] <= self.modified_location.end.column
+        )
+
     def has_diagnostic_error(self):
         DIAGNOSTIC_ERROR_PATTERN = r"cannot be assigned to|is not defined|Operator \".\" not supported for types \".*\" and \".*\""
         # TODO: Check that the diagnostic error is only for that function where the annotation was changed
 
         for diagnostic in self.diagnostics:
-            if len(re.findall(DIAGNOSTIC_ERROR_PATTERN, diagnostic["message"])) > 0:
+            diagnostic_has_error = (
+                len(re.findall(DIAGNOSTIC_ERROR_PATTERN, diagnostic["message"])) > 0
+            )
+
+            if diagnostic_has_error and self._error_in_modified_location(
+                diagnostic["range"]
+            ):
                 return True
         return False
 

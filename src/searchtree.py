@@ -115,6 +115,8 @@ def depth_first_traversal(
             number_of_type_slots - (layer_index + 1)
         )
 
+        print(f"{layer_index} -> {type_annotation}")
+
         # Handle imports of type annotations
         potential_annotation_imports = (
             list(filter(None, re.split("\[|\]|,\s*", type_annotation)))
@@ -174,18 +176,19 @@ def depth_first_traversal(
         # print(modified_tree.code)
         # print("-----------------------------------")
 
-        partial_tree = None
-        wrapper = cst.MetadataWrapper(modified_tree)
-        positions = wrapper.resolve(PositionProvider)
-        for node, position in positions.items():
-            if position == modified_location:
-                partial_tree = cst.Module(body=[node])
+        # partial_tree = None
+        # wrapper = cst.MetadataWrapper(modified_tree)
+        # positions = wrapper.resolve(PositionProvider)
+        # for node, position in positions.items():
+        #     if position == modified_location:
+        #         partial_tree = cst.Module(body=[node])
 
-        editor.temp = modified_tree.code
-        if partial_tree is not None:
-            editor.change_part_of_file(partial_tree.code, modified_location)
-        else:
-            editor.change_file(modified_tree.code)
+        # editor.temp = modified_tree.code
+        # if partial_tree is not None:
+        #     editor.change_part_of_file(partial_tree.code, modified_location)
+        # else:
+        editor.modified_location = modified_location
+        editor.change_file(modified_tree.code)
 
         # On error, change pointers to try next type annotation
         if editor.has_diagnostic_error():

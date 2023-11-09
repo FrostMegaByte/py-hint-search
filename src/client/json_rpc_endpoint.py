@@ -47,7 +47,7 @@ class JsonRpcEndpoint(object):
         :param dict message: The message to send.
         """
         json_string = json.dumps(message, cls=MyEncoder)
-        print("\nSENDING:", json_string)
+        # print("\nSENDING:", json_string)
         jsonrpc_req = self.__add_header(json_string)
         with self.write_lock:
             self.stdin.write(jsonrpc_req.encode())
