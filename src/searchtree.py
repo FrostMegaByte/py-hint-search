@@ -46,6 +46,9 @@ def transform_predictions_to_array_to_process(
             func_name = [x for x in func_name if x != "<locals>"]
         func_name = tuple(func_name)
 
+        if func_name not in type_annotated:
+            continue
+
         # First try parameters
         for param_name, param_predictions in func["params_p"].items():
             if (
@@ -115,7 +118,9 @@ def depth_first_traversal(
             number_of_type_slots - (layer_index + 1)
         )
 
-        print(f"{layer_index} -> {type_annotation}")
+        print(
+            f"{layer_index}: {type_slot['func_name']}-{type_slot['param_name']} -> {type_annotation}"
+        )
 
         # Handle imports of type annotations
         potential_annotation_imports = (

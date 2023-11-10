@@ -173,7 +173,7 @@ def main():
                 logger.info(f"'{file}' has no type slots to fill. Skipping...")
                 editor.close_file()
                 continue
-            if number_of_type_slots >= 100:
+            if number_of_type_slots >= 80:
                 print(f"{Fore.RED}'{file}' contains too many type slots. Skipping...\n")
                 logger.warning(f"'{file}' contains too many type slots. Skipping...")
                 editor.close_file()
