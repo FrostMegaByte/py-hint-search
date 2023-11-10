@@ -5,8 +5,6 @@ from libcst.metadata import PositionProvider
 
 
 class ParameterTypeAnnotationInserter(cst.CSTTransformer):
-    METADATA_DEPENDENCIES = (PositionProvider,)
-
     def __init__(
         self, parameter: str, annotation: str, function: Tuple[str, ...]
     ) -> None:
@@ -14,7 +12,6 @@ class ParameterTypeAnnotationInserter(cst.CSTTransformer):
         self.parameter = parameter
         self.annotation = annotation
         self.function = function
-        self.updated_function_location = None
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
         self.stack.append(node.name.value)
@@ -39,9 +36,6 @@ class ParameterTypeAnnotationInserter(cst.CSTTransformer):
         if current_function == self.function:
             for i, param in enumerate(updated_node.params.params):
                 if m.matches(param.name, m.Name(self.parameter)):
-                    self.updated_function_location = self.get_metadata(
-                        PositionProvider, original_node
-                    )
                     annotation = (
                         cst.Annotation(cst.parse_expression(self.annotation))
                         if self.annotation != ""
@@ -56,14 +50,52 @@ class ParameterTypeAnnotationInserter(cst.CSTTransformer):
         return updated_node
 
 
-class ReturnTypeAnnotationInserter(cst.CSTTransformer):
+class ParameterTypeAnnotationLocationCollector(cst.CSTVisitor):
     METADATA_DEPENDENCIES = (PositionProvider,)
 
+    def __init__(
+        self, parameter: str, annotation: str, function: Tuple[str, ...]
+    ) -> None:
+        self.stack: List[Tuple[str, ...]] = []
+        self.parameter = parameter
+        self.annotation = annotation
+        self.function = function
+        self.updated_location = None
+
+    def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
+        self.stack.append(node.name.value)
+        return True
+
+    def leave_ClassDef(self, node: cst.ClassDef) -> cst.ClassDef:
+        self.stack.pop()
+        return node
+
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
+        self.stack.append(node.name.value)
+        return True
+
+    def leave_FunctionDef(self, node: cst.FunctionDef) -> cst.FunctionDef:
+        current_function = tuple(self.stack)
+        self.stack.pop()
+
+        if current_function == self.function:
+            for param in node.params.params:
+                if m.matches(param.name, m.Name(self.parameter)):
+                    self.updated_location = self.get_metadata(
+                        PositionProvider, param.annotation
+                    )
+                    position = self.updated_location
+                    print(
+                        f"Parameter type hint at {position.start.line}:{position.start.column} to {position.end.line}:{position.end.column}"
+                    )
+        return node
+
+
+class ReturnTypeAnnotationInserter(cst.CSTTransformer):
     def __init__(self, annotation: str, function: Tuple[str, ...]) -> None:
         self.stack: List[Tuple[str, ...]] = []
         self.annotation = annotation
         self.function = function
-        self.updated_function_location = None
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
         self.stack.append(node.name.value)
@@ -85,10 +117,7 @@ class ReturnTypeAnnotationInserter(cst.CSTTransformer):
         current_function = tuple(self.stack)
         self.stack.pop()
 
-        if current_function == self.function and updated_node.returns is None:
-            self.updated_function_location = self.get_metadata(
-                PositionProvider, original_node
-            )
+        if current_function == self.function and original_node.returns is None:
             annotation = (
                 cst.Annotation(cst.parse_expression(self.annotation))
                 if self.annotation != ""
@@ -98,6 +127,40 @@ class ReturnTypeAnnotationInserter(cst.CSTTransformer):
         return updated_node
 
 
+class ReturnTypeAnnotationLocationCollector(cst.CSTVisitor):
+    METADATA_DEPENDENCIES = (PositionProvider,)
+
+    def __init__(self, annotation: str, function: Tuple[str, ...]) -> None:
+        self.stack: List[Tuple[str, ...]] = []
+        self.annotation = annotation
+        self.function = function
+        self.updated_location = None
+
+    def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
+        self.stack.append(node.name.value)
+        return True
+
+    def leave_ClassDef(self, node: cst.ClassDef) -> cst.ClassDef:
+        self.stack.pop()
+        return node
+
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
+        self.stack.append(node.name.value)
+        return True
+
+    def leave_FunctionDef(self, node: cst.FunctionDef) -> cst.FunctionDef:
+        current_function = tuple(self.stack)
+        self.stack.pop()
+
+        if current_function == self.function and node.returns is not None:
+            self.updated_location = self.get_metadata(PositionProvider, node.returns)
+            position = self.updated_location
+            print(
+                f"Return type hint at {position.start.line}:{position.start.column} to {position.end.line}:{position.end.column}"
+            )
+        return node
+
+
 def insert_parameter_annotation(
     tree: cst.Module,
     annotation: str,
@@ -105,9 +168,13 @@ def insert_parameter_annotation(
     parameter_name: str = "",
 ):
     transformer = ParameterTypeAnnotationInserter(parameter_name, annotation, function)
-    wrapper = cst.MetadataWrapper(tree)
-    modified_tree = wrapper.visit(transformer)
-    return modified_tree, transformer.updated_function_location
+    modified_tree = tree.visit(transformer)
+    wrapper = cst.MetadataWrapper(modified_tree)
+    visitor = ParameterTypeAnnotationLocationCollector(
+        parameter_name, annotation, function
+    )
+    wrapper.visit(visitor)
+    return modified_tree, visitor.updated_location
 
 
 def insert_return_annotation(
@@ -116,9 +183,11 @@ def insert_return_annotation(
     function: Tuple[str, ...] = None,
 ):
     transformer = ReturnTypeAnnotationInserter(annotation, function)
-    wrapper = cst.MetadataWrapper(tree)
-    modified_tree = wrapper.visit(transformer)
-    return modified_tree, transformer.updated_function_location
+    modified_tree = tree.visit(transformer)
+    wrapper = cst.MetadataWrapper(modified_tree)
+    visitor = ReturnTypeAnnotationLocationCollector(annotation, function)
+    wrapper.visit(visitor)
+    return modified_tree, visitor.updated_location
 
 
 class AlreadyTypeAnnotatedCollector(cst.CSTVisitor):
