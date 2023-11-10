@@ -114,6 +114,10 @@ def depth_first_traversal(
             number_of_type_slots - (layer_index + 1)
         )
 
+        print(
+            f"{layer_index}: {type_slot['func_name']}-{type_slot['param_name']} -> {type_annotation}"
+        )
+
         # Handle imports of type annotations
         potential_annotation_imports = (
             list(filter(None, re.split("\[|\]|,\s*", type_annotation)))
