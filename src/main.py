@@ -15,7 +15,11 @@ from annotations import (
     PyrightTypeAnnotationTransformer,
 )
 from fake_editor import FakeEditor
-from imports import add_import_to_searchtree, get_all_classes_in_project
+from imports import (
+    add_import_to_searchtree,
+    get_all_classes_in_project,
+    get_all_classes_in_virtual_environment,
+)
 from searchtree import (
     transform_predictions_to_array_to_process,
     build_tree,
@@ -39,8 +43,15 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
+        default="D:/Documents/test2/plagiarism-checker",  # "D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
         help="The path to the project which will be type annotated.",
+        # required=True,
+    )
+    parser.add_argument(
+        "--venv-path",
+        type=dir_path,
+        # default="D:/Documents/test2/plagiarism-checker/t/.venv",  # "D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
+        help="The path to the virtual environment.",
         # required=True,
     )
     parser.add_argument(
@@ -91,13 +102,27 @@ def main():
     typed_directory = "type-annotated"
     typed_path = os.path.abspath(os.path.join(working_directory, typed_directory))
 
-    ALL_PROJECT_CLASSES = get_all_classes_in_project(args.project_path)
+    ALL_PROJECT_CLASSES = get_all_classes_in_project(args.project_path, args.venv_path)
+    if args.venv_path:
+        ALL_VENV_CLASSES = get_all_classes_in_virtual_environment(args.venv_path)
+        ALL_PROJECT_CLASSES |= ALL_VENV_CLASSES
+        venv_path = os.path.normpath(args.venv_path)
+        venv_directory = venv_path.split(os.sep)[-1]
 
     create_pyright_config_file(args.project_path)
     editor.start(root_uri, workspace_folders)
 
     # Walk through project directories and type annotate all python files
     for root, dirs, files in os.walk(args.project_path):
+        # Ignore the virtual environment directory
+        if args.venv_path and venv_directory in dirs:
+            dirs.remove(venv_directory)
+        else:
+            for venv_name in {"venv", ".venv", "env", ".env", "virtualenv"}:
+                if venv_name in dirs:
+                    dirs.remove(venv_name)
+                    break
+
         python_files = [file for file in files if file.endswith(".py")]
         for file in python_files:
             relative_path = os.path.relpath(root, args.project_path)

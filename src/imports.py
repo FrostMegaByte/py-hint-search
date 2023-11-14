@@ -44,9 +44,31 @@ def get_classes_from_file(file_path: str) -> Dict[str, str]:
     return class_dict
 
 
-def get_all_classes_in_project(project_path: str) -> Dict[str, str]:
+def get_all_classes_in_project(project_path: str, venv_path: str) -> Dict[str, str]:
     classes = {}
-    for root, _, files in os.walk(project_path):
+    venv_path = os.path.normpath(venv_path)
+    venv_directory = venv_path.split(os.sep)[-1]
+    for root, dirs, files in os.walk(project_path):
+        # Ignore the virtual environment directory
+        if venv_path and venv_directory in dirs:
+            dirs.remove(venv_directory)
+        else:
+            for venv_name in {"venv", ".venv", "env", ".env", "virtualenv"}:
+                if venv_name in dirs:
+                    dirs.remove(venv_name)
+                    break
+
+        for file in files:
+            if file.endswith(".py"):
+                file_path = os.path.join(root, file)
+                classes |= get_classes_from_file(file_path)
+    return classes
+
+
+def get_all_classes_in_virtual_environment(venv_path: str) -> Dict[str, str]:
+    classes = {}
+    packages_path = os.path.join(venv_path, "Lib", "site-packages")
+    for root, _, files in os.walk(packages_path):
         for file in files:
             if file.endswith(".py"):
                 file_path = os.path.join(root, file)
@@ -130,3 +152,11 @@ class ImportInserter(cst.CSTTransformer):
         # if not import_is_present:
         body_with_import = (imp,) + updated_node.body
         return updated_node.with_changes(body=body_with_import)
+
+
+# get_all_classes_in_project(
+#     "D:/Documents/test2/plagiarism-checker",
+# )
+# get_all_classes_in_virtual_environment(
+#     "D:/Documents/test2/plagiarism-checker/t/.venv",
+# )
