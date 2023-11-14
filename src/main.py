@@ -5,9 +5,10 @@ from datetime import datetime
 import logging
 import colorama
 from colorama import Fore
+from stubs import StubTransformer
 
 from type4py_api import Type4PyException, get_type4py_predictions
-from pyright_typestubs_creator import create_typestubs
+from pyright_typestubs_creator import create_pyright_typestubs
 from annotations import (
     AlreadyTypeAnnotatedCollector,
     PyrightTypeAnnotationCollector,
@@ -209,14 +210,20 @@ def main():
                 ALL_PROJECT_CLASSES,
             )
 
-            # Write the type annotated source code to a file
+            # Create type stub for the type annotated source code tree
+            transformer = StubTransformer()
+            type_annotated_stub_tree = type_annotated_source_code_tree.visit(
+                transformer
+            )
+
+            # Write the type annotated stub to a file
             output_typed_directory = os.path.abspath(
                 os.path.join(typed_path, relative_path)
             )
             os.makedirs(output_typed_directory, exist_ok=True)
             open(
-                os.path.join(output_typed_directory, file), "w", encoding="utf-8"
-            ).write(type_annotated_source_code_tree.code)
+                os.path.join(output_typed_directory, file + "i"), "w", encoding="utf-8"
+            ).write(type_annotated_stub_tree.code)
 
             editor.close_file()
             print()
