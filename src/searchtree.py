@@ -1,7 +1,5 @@
 import logging
-import re
 from typing import Any, Dict, List, Tuple, Union
-import typing
 import libcst as cst
 from colorama import Fore
 
@@ -10,26 +8,7 @@ from annotations import (
     insert_return_annotation,
 )
 from fake_editor import FakeEditor
-from imports import get_import_module_path, ImportInserter
-
-BUILT_IN_TYPES = {
-    "bool",
-    "int",
-    "float",
-    "complex",
-    "str",
-    "list",
-    "tuple",
-    "range",
-    "bytes",
-    "bytearray",
-    "memoryview",
-    "dict",
-    "set",
-    "frozenset",
-    "None",
-    "",
-}
+from imports import add_import_to_searchtree
 
 TypeSlotPredictions = List[List[Union[str, float]]]
 
@@ -119,42 +98,16 @@ def depth_first_traversal(
         )
 
         # Handle imports of type annotations
-        potential_annotation_imports = (
-            list(filter(None, re.split("\[|\]|,\s*", type_annotation)))
-            if "[" in type_annotation
-            else [type_annotation]
+        current_file_path = editor.edit_document.uri.removeprefix("file:///")
+        tree_with_import, is_unknown_annotation = add_import_to_searchtree(
+            all_project_classes,
+            current_file_path,
+            modified_trees[layer_index],
+            type_annotation,
         )
+        modified_trees[layer_index] = tree_with_import
 
-        unknown_annotation = False
-        for annotation in potential_annotation_imports:
-            if annotation in BUILT_IN_TYPES:
-                continue
-            elif annotation in typing.__all__:
-                transformer = ImportInserter(f"from typing import {annotation}")
-                modified_trees[layer_index] = modified_trees[layer_index].visit(
-                    transformer
-                )
-            elif annotation in all_project_classes:
-                current_file_path = editor.edit_document.uri.removeprefix("file:///")
-                import_module_path = get_import_module_path(
-                    all_project_classes, annotation, current_file_path
-                )
-
-                if import_module_path is None:
-                    unknown_annotation = True
-                    break
-
-                transformer = ImportInserter(
-                    f"from {import_module_path} import {annotation}"
-                )
-                modified_trees[layer_index] = modified_trees[layer_index].visit(
-                    transformer
-                )
-            else:
-                unknown_annotation = True
-                break
-
-        if unknown_annotation:
+        if is_unknown_annotation:
             layer_specific_indices[layer_index] += 1
             continue
 

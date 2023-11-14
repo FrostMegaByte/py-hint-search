@@ -14,7 +14,7 @@ from annotations import (
     PyrightTypeAnnotationTransformer,
 )
 from fake_editor import FakeEditor
-from imports import get_all_classes_in_project
+from imports import add_import_to_searchtree, get_all_classes_in_project
 from searchtree import (
     transform_predictions_to_array_to_process,
     build_tree,
@@ -144,7 +144,25 @@ def main():
                 stub_tree = cst.parse_module(stub_code)
                 visitor = PyrightTypeAnnotationCollector()
                 stub_tree.visit(visitor)
-                transformer = PyrightTypeAnnotationTransformer(visitor.annotations)
+
+                unknown_annotations = set()
+                for pyright_type_annotation in visitor.all_pyright_annotations:
+                    # Handle imports of pyright type annotations
+                    tree_with_import, is_unknown_annotation = add_import_to_searchtree(
+                        ALL_PROJECT_CLASSES,
+                        file_path,
+                        source_code_tree,
+                        pyright_type_annotation,
+                    )
+                    source_code_tree = tree_with_import
+
+                    if is_unknown_annotation:
+                        unknown_annotations.add(pyright_type_annotation)
+                        continue
+
+                transformer = PyrightTypeAnnotationTransformer(
+                    visitor.annotations, unknown_annotations
+                )
                 source_code_tree = source_code_tree.visit(transformer)
 
             # Get already type annotated parameters and return types
