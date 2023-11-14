@@ -4,7 +4,7 @@ import subprocess
 from typing import List
 
 
-def create_typestubs(project_path: str) -> None:
+def create_pyright_typestubs(project_path: str) -> None:
     os.chdir(os.path.abspath(os.path.join(project_path, "..")))
     working_directory = os.getcwd()
 
@@ -76,4 +76,4 @@ def parse_arguments() -> argparse.Namespace:
 
 if __name__ == "__main__":
     args = parse_arguments()
-    create_typestubs(args.project_path)
+    create_pyright_typestubs(args.project_path)
