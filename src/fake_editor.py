@@ -141,29 +141,6 @@ class FakeEditor:
         )
         self._wait_for_diagnostics()
 
-    def change_part_of_file(self, new_python_snippet: str, modified_location) -> None:
-        self.modified_location = modified_location
-        self.edit_document.version += 1
-        document = VersionedTextDocumentIdentifier(
-            uri=self.edit_document.uri,
-            version=self.edit_document.version,
-        )
-        pos = self.modified_location
-        change = TextDocumentContentChangeEvent_Type1(
-            range=Range(
-                start=Position(line=pos.start.line - 1, character=pos.start.column),
-                end=Position(line=pos.end.line - 1, character=pos.end.column),
-            ),
-            text=new_python_snippet,
-        )
-        self.lsp_client.did_change(
-            DidChangeTextDocumentParams(
-                text_document=document,
-                content_changes=[change],
-            )
-        )
-        self._wait_for_diagnostics()
-
     def _error_in_modified_location(self, range) -> bool:
         return (
             self.modified_location is not None

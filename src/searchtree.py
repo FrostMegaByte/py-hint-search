@@ -134,17 +134,7 @@ def depth_first_traversal(
         # print(modified_tree.code)
         # print("-----------------------------------")
 
-        partial_tree = None
-        wrapper = cst.MetadataWrapper(modified_tree)
-        positions = wrapper.resolve(PositionProvider)
-        for node, position in positions.items():
-            if position == modified_location:
-                partial_tree = cst.Module(body=[node])
-
-        if partial_tree is not None:
-            editor.change_part_of_file(partial_tree.code, modified_location)
-        else:
-            editor.change_file(modified_tree.code, modified_location)
+        editor.change_file(modified_tree.code, modified_location)
 
         # On error, change pointers to try next type annotation
         if editor.has_diagnostic_error():
