@@ -115,17 +115,6 @@ def main():
             file_path = os.path.join(root, file)
             editor.open_file(file_path)
 
-            if editor.has_diagnostic_error():
-                print(
-                    f"{Fore.RED}'{file}' contains Pyright error at the start. Skipping...\n"
-                )
-                logger.warning(
-                    f"'{file}' contains Pyright error at the start. Skipping..."
-                )
-                # TODO: Can make this more specific by checking line and column positions of the error
-                editor.close_file()
-                continue
-
             python_code = editor.edit_document.text
             if python_code == "":
                 print(f"{Fore.BLUE}'{file}' is an empty file. Skipping...\n")
