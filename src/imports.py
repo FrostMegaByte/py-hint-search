@@ -89,6 +89,10 @@ def add_import_to_searchtree(
         elif annotation in typing.__all__:
             transformer = ImportInserter(f"from typing import {annotation}")
             source_code_tree = source_code_tree.visit(transformer)
+        elif "." in annotation:
+            module, annotation = annotation.rsplit(".", 1)
+            transformer = ImportInserter(f"from {module} import {annotation}")
+            source_code_tree = source_code_tree.visit(transformer)
         elif annotation in all_project_classes:
             import_module_path = get_import_module_path(
                 all_project_classes, annotation, file_path

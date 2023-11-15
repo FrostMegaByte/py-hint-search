@@ -105,7 +105,9 @@ def main():
             logger.info(f"Processing file: {os.path.join(relative_path, file)}")
 
             type_annotated_file = os.path.abspath(
-                os.path.join(working_directory, "type-annotated", relative_path, file)
+                os.path.join(
+                    working_directory, "type-annotated", relative_path, file + "i"
+                )
             )
             if os.path.exists(type_annotated_file):
                 print(f"{Fore.GREEN}{file} already annotated. Skipping...\n")
