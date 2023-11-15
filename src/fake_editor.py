@@ -125,7 +125,8 @@ class FakeEditor:
         )
         self._wait_for_diagnostics()
 
-    def change_file(self, new_python_code: str) -> None:
+    def change_file(self, new_python_code: str, modified_location) -> None:
+        self.modified_location = modified_location
         self.edit_document.version += 1
         document = VersionedTextDocumentIdentifier(
             uri=self.edit_document.uri,
@@ -140,7 +141,7 @@ class FakeEditor:
         )
         self._wait_for_diagnostics()
 
-    def change_part_of_file(self, new_python_snippet: str, modified_location):
+    def change_part_of_file(self, new_python_snippet: str, modified_location) -> None:
         self.modified_location = modified_location
         self.edit_document.version += 1
         document = VersionedTextDocumentIdentifier(
@@ -163,7 +164,7 @@ class FakeEditor:
         )
         self._wait_for_diagnostics()
 
-    def _error_in_modified_location(self, range):
+    def _error_in_modified_location(self, range) -> bool:
         return (
             self.modified_location is not None
             and range["start"]["line"] >= self.modified_location.start.line
@@ -172,8 +173,8 @@ class FakeEditor:
             and range["end"]["character"] <= self.modified_location.end.column
         )
 
-    def has_diagnostic_error(self):
-        DIAGNOSTIC_ERROR_PATTERN = r"cannot be assigned to|is not defined|Operator \".\" not supported for types \".*\" and \".*\""
+    def has_diagnostic_error(self) -> bool:
+        DIAGNOSTIC_ERROR_PATTERN = r"cannot be assigned to|is not defined|Operator \".*\" not supported for types \".*\" and \".*\""
         # TODO: Check that the diagnostic error is only for that function where the annotation was changed
 
         for diagnostic in self.diagnostics:

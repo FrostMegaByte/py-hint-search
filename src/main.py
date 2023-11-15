@@ -5,16 +5,17 @@ from datetime import datetime
 import logging
 import colorama
 from colorama import Fore
+from stubs import StubTransformer
 
 from type4py_api import Type4PyException, get_type4py_predictions
-from pyright_typestubs_creator import create_typestubs
+from pyright_typestubs_creator import create_pyright_typestubs
 from annotations import (
     AlreadyTypeAnnotatedCollector,
     PyrightTypeAnnotationCollector,
     PyrightTypeAnnotationTransformer,
 )
 from fake_editor import FakeEditor
-from imports import get_all_classes_in_project
+from imports import add_import_to_searchtree, get_all_classes_in_project
 from searchtree import (
     transform_predictions_to_array_to_process,
     build_tree,
@@ -144,7 +145,25 @@ def main():
                 stub_tree = cst.parse_module(stub_code)
                 visitor = PyrightTypeAnnotationCollector()
                 stub_tree.visit(visitor)
-                transformer = PyrightTypeAnnotationTransformer(visitor.annotations)
+
+                unknown_annotations = set()
+                for pyright_type_annotation in visitor.all_pyright_annotations:
+                    # Handle imports of pyright type annotations
+                    tree_with_import, is_unknown_annotation = add_import_to_searchtree(
+                        ALL_PROJECT_CLASSES,
+                        file_path,
+                        source_code_tree,
+                        pyright_type_annotation,
+                    )
+                    source_code_tree = tree_with_import
+
+                    if is_unknown_annotation:
+                        unknown_annotations.add(pyright_type_annotation)
+                        continue
+
+                transformer = PyrightTypeAnnotationTransformer(
+                    visitor.annotations, unknown_annotations
+                )
                 source_code_tree = source_code_tree.visit(transformer)
 
             # Get already type annotated parameters and return types
@@ -191,14 +210,20 @@ def main():
                 ALL_PROJECT_CLASSES,
             )
 
-            # Write the type annotated source code to a file
+            # Create type stub for the type annotated source code tree
+            transformer = StubTransformer()
+            type_annotated_stub_tree = type_annotated_source_code_tree.visit(
+                transformer
+            )
+
+            # Write the type annotated stub to a file
             output_typed_directory = os.path.abspath(
                 os.path.join(typed_path, relative_path)
             )
             os.makedirs(output_typed_directory, exist_ok=True)
             open(
-                os.path.join(output_typed_directory, file), "w", encoding="utf-8"
-            ).write(type_annotated_source_code_tree.code)
+                os.path.join(output_typed_directory, file + "i"), "w", encoding="utf-8"
+            ).write(type_annotated_stub_tree.code)
 
             editor.close_file()
             print()

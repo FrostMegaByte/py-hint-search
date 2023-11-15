@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 import libcst as cst
 import libcst.matchers as m
 from libcst.metadata import PositionProvider
@@ -155,6 +155,7 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
             Tuple[str, ...],
             Tuple[cst.Parameters, Optional[cst.Annotation]],
         ] = {}
+        self.all_pyright_annotations: List[str] = []
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
         self.stack.append(node.name.value)
@@ -164,11 +165,18 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
 
     def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
         self.stack.append(node.name.value)
+
+        # I'm pretty certain that Pyright stubs don't suggest annotations for parameters, so this is commented out for now
+        # for param in node.params.params:
+        #     if param.annotation is not None:
+        #         self.all_pyright_annotations.append(param.annotation.value)
+
         if node.returns is None and node.body.header.comment is not None:
             comment = node.body.header.comment.value
             annotation = comment.split("->")[1].strip()[:-1]
             return_annotation = cst.Annotation(cst.parse_expression(annotation))
             self.annotations[tuple(self.stack)] = (node.params, return_annotation)
+            self.all_pyright_annotations.append(annotation)
         else:
             self.annotations[tuple(self.stack)] = (node.params, node.returns)
         return False
@@ -178,12 +186,13 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
 
 
 class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
-    def __init__(self, annotations):
+    def __init__(self, annotations, unknown_annotations: Set[str]) -> None:
         self.stack: List[Tuple[str, ...]] = []
         self.annotations: Dict[
             Tuple[str, ...],
             Tuple[cst.Parameters, Optional[cst.Annotation]],
         ] = annotations
+        self.unknown_annotations = unknown_annotations
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
         self.stack.append(node.name.value)
@@ -205,7 +214,14 @@ class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
         self.stack.pop()
         if key in self.annotations:
             annotations = self.annotations[key]
+            return_annotation = (
+                annotations[1]
+                if annotations[1] is not None
+                and annotations[1].annotation.value not in self.unknown_annotations
+                else None
+            )
             return updated_node.with_changes(
-                params=annotations[0], returns=annotations[1]
+                params=annotations[0],
+                returns=return_annotation,
             )
         return updated_node

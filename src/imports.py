@@ -1,9 +1,30 @@
 import os
 import ast
 import logging
+import re
 from typing import Dict, Optional
+import typing
 import libcst as cst
 import libcst.matchers as m
+
+BUILT_IN_TYPES = {
+    "bool",
+    "int",
+    "float",
+    "complex",
+    "str",
+    "list",
+    "tuple",
+    "range",
+    "bytes",
+    "bytearray",
+    "memoryview",
+    "dict",
+    "set",
+    "frozenset",
+    "None",
+    "",
+}
 
 
 def get_classes_from_file(file_path: str) -> Dict[str, str]:
@@ -47,6 +68,44 @@ def get_import_module_path(
         return module_path
     else:
         return None
+
+
+def add_import_to_searchtree(
+    all_project_classes: Dict[str, str],
+    file_path: str,
+    source_code_tree: cst.Module,
+    type_annotation: str,
+):
+    potential_annotation_imports = (
+        list(filter(None, re.split("\[|\]|,\s*", type_annotation)))
+        if "[" in type_annotation
+        else [type_annotation]
+    )
+
+    is_unknown_annotation = False
+    for annotation in potential_annotation_imports:
+        if annotation in BUILT_IN_TYPES:
+            continue
+        elif annotation in typing.__all__:
+            transformer = ImportInserter(f"from typing import {annotation}")
+            source_code_tree = source_code_tree.visit(transformer)
+        elif annotation in all_project_classes:
+            import_module_path = get_import_module_path(
+                all_project_classes, annotation, file_path
+            )
+
+            if import_module_path is None:
+                is_unknown_annotation = True
+                break
+
+            transformer = ImportInserter(
+                f"from {import_module_path} import {annotation}"
+            )
+            source_code_tree = source_code_tree.visit(transformer)
+        else:
+            is_unknown_annotation = True
+            break
+    return source_code_tree, is_unknown_annotation
 
 
 class ImportInserter(cst.CSTTransformer):
