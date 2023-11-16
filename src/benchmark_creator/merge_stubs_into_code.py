@@ -2,7 +2,7 @@ import os
 import argparse
 import libcst as cst
 import libcst.matchers as m
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Union
 
 
 class TypingCollector(cst.CSTVisitor):
@@ -12,6 +12,13 @@ class TypingCollector(cst.CSTVisitor):
             Tuple[str, ...],
             Tuple[cst.Parameters, Optional[cst.Annotation]],
         ] = {}
+        self.imports: List[Union[cst.Import, cst.ImportFrom]] = []
+
+    def leave_Import(self, node: cst.Import) -> cst.Import:
+        self.imports.append(node)
+
+    def leave_ImportFrom(self, node: cst.ImportFrom) -> cst.ImportFrom:
+        self.imports.append(node)
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
         self.stack.append(node.name.value)
@@ -29,12 +36,22 @@ class TypingCollector(cst.CSTVisitor):
 
 
 class TypingTransformer(cst.CSTTransformer):
-    def __init__(self, annotations):
+    def __init__(self, annotations, imports):
         self.stack: List[Tuple[str, ...]] = []
         self.annotations: Dict[
             Tuple[str, ...],
             Tuple[cst.Parameters, Optional[cst.Annotation]],
         ] = annotations
+        self.imports: List[Union[cst.Import, cst.ImportFrom]] = imports
+
+    def leave_Module(
+        self, original_node: cst.Module, updated_node: cst.Module
+    ) -> cst.Module:
+        body = []
+        for import_node in self.imports:
+            body.append(import_node)
+            body.append(cst.EmptyLine())
+        return updated_node.with_changes(body=tuple(body) + updated_node.body)
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
         self.stack.append(node.name.value)
@@ -86,7 +103,7 @@ def merge_stub_annotations_in_code(source_code: str, stub_code: str) -> str:
     stub_tree = cst.parse_module(stub_code)
     visitor = TypingCollector()
     stub_tree.visit(visitor)
-    transformer = TypingTransformer(visitor.annotations)
+    transformer = TypingTransformer(visitor.annotations, visitor.imports)
     modified_tree = source_tree.visit(transformer)
     return modified_tree.code
 
@@ -105,14 +122,14 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/exifread",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach/bleach",
         help="The path to the project that will be type annotated.",
         # required=True,
     )
     parser.add_argument(
         "--stubs-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/typeshed/stubs/ExifRead/exifread",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/typeshed/stubs/bleach/bleach",
         help="The path to the stub files of the project that will be type annotated.",
         # required=True,
     )
