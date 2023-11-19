@@ -1,4 +1,6 @@
 import logging
+import re
+import time
 from typing import Any, Dict, List, Tuple, Union
 import libcst as cst
 from libcst.metadata import PositionProvider
@@ -81,15 +83,26 @@ def depth_first_traversal(
     slot_annotations = [""] * number_of_type_slots
     modified_trees = [original_source_code_tree] + [None] * number_of_type_slots
 
+    start_time = time.time()
     while 0 <= layer_index < number_of_type_slots:
+        if time.time() - start_time > 5 * 60:
+            print(
+                f"{Fore.RED}Timeout after 5 minutes. File takes too long to process. Likely something wrong with backtracking and filling in the slots..."
+            )
+            logger = logging.getLogger(__name__)
+            logger.error(
+                "Timeout after 5 minutes. File takes too long to process. Likely something wrong with backtracking and filling in the slots..."
+            )
+            return original_source_code_tree
+
         type_slot = search_tree[f"layer_{layer_index}"]
         type_annotation = type_slot["predictions"][layer_specific_indices[layer_index]][
             0
         ]
 
         # Type4Py sometimes returns type annotations with quotes which breaks some stuff, so must be removed
-        if '"' in type_annotation:
-            type_annotation = type_annotation.strip('"')
+        if '"' in type_annotation or "'" in type_annotation:
+            type_annotation = re.sub(r"[\"']", "", type_annotation)
 
         slot_annotations[layer_index] = type_annotation
         # Clear right side of the array as those type annotations are not yet known because of backtracking
@@ -114,6 +127,20 @@ def depth_first_traversal(
         if is_unknown_annotation:
             layer_specific_indices[layer_index] += 1
             continue
+
+        if "." in type_annotation and "[" in type_annotation:
+            type_annotations_to_strip = list(
+                filter(None, re.split("\[|\]|,\s*", type_annotation))
+            )
+            for annotation in type_annotations_to_strip:
+                if "." in annotation and not "..." in annotation:
+                    annotation_stripped = annotation.rsplit(".", 1)[1]
+                    type_annotation = type_annotation.replace(
+                        annotation, annotation_stripped
+                    )
+
+        if "." in type_annotation and not "..." in type_annotation:
+            type_annotation = type_annotation.rsplit(".", 1)[1]
 
         # Add type annotation to source code
         modified_tree, modified_location = (

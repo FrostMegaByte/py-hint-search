@@ -90,6 +90,8 @@ def add_import_to_searchtree(
             transformer = ImportInserter(f"from typing import {annotation}")
             source_code_tree = source_code_tree.visit(transformer)
         elif "." in annotation:
+            if annotation == "...":
+                continue
             module, annotation = annotation.rsplit(".", 1)
             transformer = ImportInserter(f"from {module} import {annotation}")
             source_code_tree = source_code_tree.visit(transformer)
