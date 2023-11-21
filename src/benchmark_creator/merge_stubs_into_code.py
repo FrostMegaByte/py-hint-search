@@ -13,12 +13,17 @@ class TypingCollector(cst.CSTVisitor):
             Tuple[cst.Parameters, Optional[cst.Annotation]],
         ] = {}
         self.imports: List[Union[cst.Import, cst.ImportFrom]] = []
+        self.type_aliases: List[cst.AnnAssign] = []
 
-    def leave_Import(self, node: cst.Import) -> cst.Import:
+    def visit_Import(self, node: cst.Import) -> cst.Import:
         self.imports.append(node)
 
-    def leave_ImportFrom(self, node: cst.ImportFrom) -> cst.ImportFrom:
+    def visit_ImportFrom(self, node: cst.ImportFrom) -> cst.ImportFrom:
         self.imports.append(node)
+
+    def visit_AnnAssign(self, node: cst.AnnAssign) -> None:
+        if m.matches(node.annotation, m.Annotation(annotation=m.Name("TypeAlias"))):
+            self.type_aliases.append(node)
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
         self.stack.append(node.name.value)
@@ -36,13 +41,14 @@ class TypingCollector(cst.CSTVisitor):
 
 
 class TypingTransformer(cst.CSTTransformer):
-    def __init__(self, annotations, imports):
+    def __init__(self, annotations, imports, type_aliases):
         self.stack: List[Tuple[str, ...]] = []
         self.annotations: Dict[
             Tuple[str, ...],
             Tuple[cst.Parameters, Optional[cst.Annotation]],
         ] = annotations
         self.imports: List[Union[cst.Import, cst.ImportFrom]] = imports
+        self.type_aliases: List[cst.AnnAssign] = type_aliases
 
     def leave_Module(
         self, original_node: cst.Module, updated_node: cst.Module
@@ -50,6 +56,9 @@ class TypingTransformer(cst.CSTTransformer):
         body = []
         for import_node in self.imports:
             body.append(import_node)
+            body.append(cst.EmptyLine())
+        for type_alias in self.type_aliases:
+            body.append(type_alias)
             body.append(cst.EmptyLine())
         return updated_node.with_changes(body=tuple(body) + updated_node.body)
 
@@ -103,7 +112,9 @@ def merge_stub_annotations_in_code(source_code: str, stub_code: str) -> str:
     stub_tree = cst.parse_module(stub_code)
     visitor = TypingCollector()
     stub_tree.visit(visitor)
-    transformer = TypingTransformer(visitor.annotations, visitor.imports)
+    transformer = TypingTransformer(
+        visitor.annotations, visitor.imports, visitor.type_aliases
+    )
     modified_tree = source_tree.visit(transformer)
     return modified_tree.code
 
