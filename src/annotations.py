@@ -18,7 +18,7 @@ class ParameterTypeAnnotationInserter(cst.CSTTransformer):
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
         self.stack.append(node.name.value)
-        return True
+        return False
 
     def leave_ClassDef(
         self, original_node: cst.ClassDef, updated_node: cst.ClassDef
@@ -28,7 +28,7 @@ class ParameterTypeAnnotationInserter(cst.CSTTransformer):
 
     def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
         self.stack.append(node.name.value)
-        return True
+        return False
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
@@ -67,7 +67,7 @@ class ReturnTypeAnnotationInserter(cst.CSTTransformer):
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
         self.stack.append(node.name.value)
-        return True
+        return False
 
     def leave_ClassDef(
         self, original_node: cst.ClassDef, updated_node: cst.ClassDef
@@ -77,7 +77,7 @@ class ReturnTypeAnnotationInserter(cst.CSTTransformer):
 
     def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
         self.stack.append(node.name.value)
-        return True
+        return False
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
@@ -166,7 +166,7 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
     def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
         self.stack.append(node.name.value)
 
-        # TODO: INCORRECT: I'm pretty certain that Pyright stubs don't suggest annotations for parameters, so this is commented out for now
+        # TODO: Handle Pyright suggestions for annotations for parameters. Also keep the standard default values
         # for param in node.params.params:
         #     if param.annotation is not None:
         #         self.all_pyright_annotations.append(param.annotation.value)
