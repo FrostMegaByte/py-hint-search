@@ -166,7 +166,7 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
     def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
         self.stack.append(node.name.value)
 
-        # I'm pretty certain that Pyright stubs don't suggest annotations for parameters, so this is commented out for now
+        # TODO: INCORRECT: I'm pretty certain that Pyright stubs don't suggest annotations for parameters, so this is commented out for now
         # for param in node.params.params:
         #     if param.annotation is not None:
         #         self.all_pyright_annotations.append(param.annotation.value)
@@ -174,6 +174,8 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
         if node.returns is None and node.body.header.comment is not None:
             comment = node.body.header.comment.value
             annotation = comment.split("->")[1].strip()[:-1]
+            if "|" in annotation:
+                annotation = transform_binary_operations_to_unions(annotation)
             return_annotation = cst.Annotation(cst.parse_expression(annotation))
             self.annotations[tuple(self.stack)] = (node.params, return_annotation)
             self.all_pyright_annotations.append(annotation)
@@ -183,6 +185,41 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
 
     def leave_FunctionDef(self, node: cst.FunctionDef) -> None:
         self.stack.pop()
+
+
+class BinaryOperationToUnionTransformer(cst.CSTTransformer):
+    def leave_BinaryOperation(
+        self, original_node: cst.BinaryOperation, updated_node: cst.BinaryOperation
+    ) -> cst.Subscript:
+        if updated_node.left.value == "None":
+            return cst.Subscript(
+                value=cst.Name("Optional"),
+                slice=[cst.SubscriptElement(slice=cst.Index(value=updated_node.right))],
+            )
+        elif updated_node.right.value == "None":
+            return cst.Subscript(
+                value=cst.Name("Optional"),
+                slice=[cst.SubscriptElement(slice=cst.Index(value=updated_node.left))],
+            )
+        else:
+            return cst.Subscript(
+                value=cst.Name("Union"),
+                slice=[
+                    cst.SubscriptElement(slice=cst.Index(value=updated_node.left)),
+                    cst.SubscriptElement(slice=cst.Index(value=updated_node.right)),
+                ],
+            )
+
+
+def node_to_code(node: cst.CSTNode):
+    return cst.Module([]).code_for_node(node)
+
+
+def transform_binary_operations_to_unions(annotation: str):
+    node = cst.parse_expression(annotation)
+    transformer = BinaryOperationToUnionTransformer()
+    transformed_annotation = node.visit(transformer)
+    return node_to_code(transformed_annotation)
 
 
 class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
