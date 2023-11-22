@@ -30,7 +30,8 @@ class RemoveTypeAnnotationsTransformer(cst.CSTTransformer):
     ) -> cst.Param:
         return (
             updated_node
-            if updated_node.module and updated_node.module.value != "typing"
+            if updated_node.relative
+            or (updated_node.module and updated_node.module.value != "typing")
             else cst.RemovalSentinel.REMOVE
         )
 
