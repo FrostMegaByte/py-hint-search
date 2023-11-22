@@ -167,15 +167,29 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
         self.stack.append(node.name.value)
 
         # TODO: Handle Pyright suggestions for annotations for parameters. Also keep the standard default values
-        # for param in node.params.params:
-        #     if param.annotation is not None:
-        #         self.all_pyright_annotations.append(param.annotation.value)
+        for param in node.params.params:
+            if param.annotation is not None:
+                if isinstance(param.annotation.annotation, cst.BinaryOperation):
+                    union_annotation = transform_binary_operations_to_unions(
+                        param.annotation.annotation
+                    )
+                    self.all_pyright_annotations.append(union_annotation)
+                else:
+                    self.all_pyright_annotations.append(
+                        param.annotation.annotation.value
+                    )
 
-        if node.returns is None and node.body.header.comment is not None:
+        if (
+            node.returns is None
+            and hasattr(node.body, "header")
+            and node.body.header.comment is not None
+        ):
             comment = node.body.header.comment.value
             annotation = comment.split("->")[1].strip()[:-1]
             if "|" in annotation:
-                annotation = transform_binary_operations_to_unions(annotation)
+                annotation = transform_binary_operations_to_unions(
+                    cst.parse_expression(annotation)
+                )
             return_annotation = cst.Annotation(cst.parse_expression(annotation))
             self.annotations[tuple(self.stack)] = (node.params, return_annotation)
             self.all_pyright_annotations.append(annotation)
@@ -215,8 +229,7 @@ def node_to_code(node: cst.CSTNode):
     return cst.Module([]).code_for_node(node)
 
 
-def transform_binary_operations_to_unions(annotation: str):
-    node = cst.parse_expression(annotation)
+def transform_binary_operations_to_unions(node: cst.BinaryOperation):
     transformer = BinaryOperationToUnionTransformer()
     transformed_annotation = node.visit(transformer)
     return node_to_code(transformed_annotation)
@@ -251,6 +264,25 @@ class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
         self.stack.pop()
         if key in self.annotations:
             annotations = self.annotations[key]
+
+            updated_params = list(annotations[0].params)
+            for i, param in enumerate(annotations[0].params):
+                if param.annotation is not None and isinstance(
+                    param.annotation.annotation, cst.BinaryOperation
+                ):
+                    union_annotation = transform_binary_operations_to_unions(
+                        param.annotation.annotation
+                    )
+                    updated_params[i] = param.with_changes(
+                        annotation=cst.Annotation(
+                            cst.parse_expression(union_annotation)
+                        )
+                    )
+
+            updated_params = updated_node.params.with_changes(
+                params=tuple(updated_params)
+            )
+
             return_annotation = (
                 annotations[1]
                 if annotations[1] is not None
@@ -258,7 +290,7 @@ class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
                 else None
             )
             return updated_node.with_changes(
-                params=annotations[0],
+                params=updated_params,
                 returns=return_annotation,
             )
         return updated_node
