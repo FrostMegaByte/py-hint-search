@@ -175,7 +175,9 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
                     )
                     self.all_pyright_annotations.add(union_annotation)
                 else:
-                    self.all_pyright_annotations.add(param.annotation.annotation.value)
+                    self.all_pyright_annotations.add(
+                        node_to_code(param.annotation.annotation)
+                    )
 
         if (
             node.returns is None
