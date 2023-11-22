@@ -39,7 +39,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach/stripped",
         help="The path to the project which will be type annotated.",
         # required=True,
     )
@@ -63,6 +64,19 @@ def remove_pyright_config_file(project_path: str) -> None:
     pyright_config_file = os.path.join(project_path, "pyrightconfig.json")
     if os.path.exists(pyright_config_file):
         os.remove(pyright_config_file)
+
+
+def create_stub_file(source_code_tree, typed_path, relative_path, file_name) -> None:
+    # Create type stub for the type annotated source code tree
+    transformer = StubTransformer()
+    type_annotated_stub_tree = source_code_tree.visit(transformer)
+
+    # Write the type annotated stub to a file
+    output_typed_directory = os.path.abspath(os.path.join(typed_path, relative_path))
+    os.makedirs(output_typed_directory, exist_ok=True)
+    open(
+        os.path.join(output_typed_directory, file_name + "i"), "w", encoding="utf-8"
+    ).write(type_annotated_stub_tree.code)
 
 
 def main():
@@ -127,6 +141,7 @@ def main():
             source_code_tree = cst.parse_module(python_code)
 
             # Add type annotations inferred by Pyright
+            added_extra_pyright_annotations = False
             if PYRIGHT_ANNOTATIONS_EXIST:
                 relative_stub_subdirectory = os.path.relpath(root, working_directory)
                 stub_directory = os.path.join(stubs_path, relative_stub_subdirectory)
@@ -156,10 +171,13 @@ def main():
                     visitor.annotations, unknown_annotations
                 )
                 source_code_tree = source_code_tree.visit(transformer)
+                added_extra_pyright_annotations = True
 
             # Get already type annotated parameters and return types
             visitor = AlreadyTypeAnnotatedCollector()
             source_code_tree.visit(visitor)
+
+            logger.info(source_code_tree.code)
 
             # Get ML type annotation predictions
             try:
@@ -179,10 +197,23 @@ def main():
 
             number_of_type_slots = len(search_tree_layers)
             if number_of_type_slots == 0:
-                print(f"{Fore.BLUE}'{file}' has no type slots to fill. Skipping...\n")
-                logger.info(f"'{file}' has no type slots to fill. Skipping...")
-                editor.close_file()
-                continue
+                if added_extra_pyright_annotations:
+                    create_stub_file(source_code_tree, typed_path, relative_path, file)
+                    print(
+                        f"{Fore.GREEN}'{file}' completed with additional Pyright annotations!\n"
+                    )
+                    logger.info(
+                        f"'{file}' completed with additional Pyright annotations!"
+                    )
+                    editor.close_file()
+                    continue
+                else:
+                    print(
+                        f"{Fore.BLUE}'{file}' has no type slots to fill. Skipping...\n"
+                    )
+                    logger.info(f"'{file}' has no type slots to fill. Skipping...")
+                    editor.close_file()
+                    continue
             if number_of_type_slots >= 80:
                 print(f"{Fore.RED}'{file}' contains too many type slots. Skipping...\n")
                 logger.warning(f"'{file}' contains too many type slots. Skipping...")
@@ -201,21 +232,9 @@ def main():
                 ALL_PROJECT_CLASSES,
             )
 
-            # Create type stub for the type annotated source code tree
-            transformer = StubTransformer()
-            type_annotated_stub_tree = type_annotated_source_code_tree.visit(
-                transformer
+            create_stub_file(
+                type_annotated_source_code_tree, typed_path, relative_path, file
             )
-
-            # Write the type annotated stub to a file
-            output_typed_directory = os.path.abspath(
-                os.path.join(typed_path, relative_path)
-            )
-            os.makedirs(output_typed_directory, exist_ok=True)
-            open(
-                os.path.join(output_typed_directory, file + "i"), "w", encoding="utf-8"
-            ).write(type_annotated_stub_tree.code)
-
             editor.close_file()
             print()
 

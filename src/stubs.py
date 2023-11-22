@@ -1,4 +1,5 @@
 import libcst as cst
+import libcst.matchers as m
 
 
 class StubTransformer(cst.CSTTransformer):
@@ -58,5 +59,11 @@ class StubTransformer(cst.CSTTransformer):
             node
             for node in updated_node.body
             if any(isinstance(node, cls) for cls in [cst.Import, cst.ImportFrom])
+            or (
+                isinstance(node, cst.AnnAssign)
+                and m.matches(
+                    node.annotation, m.Annotation(annotation=m.Name("TypeAlias"))
+                )
+            )
         ]
         return updated_node.with_changes(body=newbody)
