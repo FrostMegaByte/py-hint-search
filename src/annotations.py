@@ -155,7 +155,7 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
             Tuple[str, ...],
             Tuple[cst.Parameters, Optional[cst.Annotation]],
         ] = {}
-        self.all_pyright_annotations: List[str] = []
+        self.all_pyright_annotations: Set[str] = set()
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
         self.stack.append(node.name.value)
@@ -173,11 +173,9 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
                     union_annotation = transform_binary_operations_to_unions(
                         param.annotation.annotation
                     )
-                    self.all_pyright_annotations.append(union_annotation)
+                    self.all_pyright_annotations.add(union_annotation)
                 else:
-                    self.all_pyright_annotations.append(
-                        param.annotation.annotation.value
-                    )
+                    self.all_pyright_annotations.add(param.annotation.annotation.value)
 
         if (
             node.returns is None
@@ -192,7 +190,7 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
                 )
             return_annotation = cst.Annotation(cst.parse_expression(annotation))
             self.annotations[tuple(self.stack)] = (node.params, return_annotation)
-            self.all_pyright_annotations.append(annotation)
+            self.all_pyright_annotations.add(annotation)
         else:
             self.annotations[tuple(self.stack)] = (node.params, node.returns)
         return False
