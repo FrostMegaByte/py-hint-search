@@ -281,11 +281,11 @@ class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
                     )
 
             # Keep standard default values
-            for i, param in enumerate(updated_node.params.params):
-                if isinstance(param.default, cst.Name):
-                    updated_params[i] = updated_params[i].with_changes(
-                        default=param.default
-                    )
+            # for i, param in enumerate(updated_node.params.params):
+            #     if isinstance(param.default, cst.Name):
+            #         updated_params[i] = updated_params[i].with_changes(
+            #             default=param.default
+            #         )
 
             updated_params = updated_node.params.with_changes(
                 params=tuple(updated_params)
