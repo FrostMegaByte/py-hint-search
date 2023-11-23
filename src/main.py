@@ -1,8 +1,7 @@
 import os
 import argparse
+import time
 import libcst as cst
-from datetime import datetime
-import logging
 import colorama
 from colorama import Fore
 from stubs import StubTransformer
@@ -16,6 +15,7 @@ from annotations import (
 )
 from fake_editor import FakeEditor
 from imports import add_import_to_searchtree, get_all_classes_in_project
+from loggers import create_main_logger, create_evaluation_logger
 from searchtree import (
     transform_predictions_to_array_to_process,
     build_tree,
@@ -66,17 +66,6 @@ def remove_pyright_config_file(project_path: str) -> None:
         os.remove(pyright_config_file)
 
 
-def create_logger() -> logging.Logger:
-    logs_path = os.path.abspath(os.path.join(os.getcwd(), "logs"))
-    os.makedirs(logs_path, exist_ok=True)
-    logging.basicConfig(
-        filename=f"logs/{datetime.today().strftime('%Y-%m-%d %H_%M_%S')}.txt",
-        format="%(asctime)s %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
-        level=logging.DEBUG,
-    )
-    return logging.getLogger(__name__)
-
-
 def create_stub_file(source_code_tree, typed_path, relative_path, file_name) -> None:
     # Create type stub for the type annotated source code tree
     transformer = StubTransformer()
@@ -115,6 +104,7 @@ def main(args: argparse.Namespace) -> None:
             relative_path = os.path.relpath(root, args.project_path)
             print(f"Processing file: {os.path.join(relative_path, file)}")
             logger.info(f"Processing file: {os.path.join(relative_path, file)}")
+            start_time = time.time()
 
             type_annotated_file = os.path.abspath(
                 os.path.join(
@@ -245,6 +235,15 @@ def main(args: argparse.Namespace) -> None:
                 type_annotated_source_code_tree, typed_path, relative_path, file
             )
             editor.close_file()
+
+            finish_time = time.time() - start_time
+            evaluation_logger.info(f"Results of {os.path.join(relative_path, file)}:")
+            evaluation_logger.info(f"Total time taken:\t\t{finish_time}")
+            evaluation_logger.info(f"# Predicted type slots:\t{number_of_type_slots}")
+            evaluation_logger.info(
+                f"Time per slot:\t\t\t{finish_time/number_of_type_slots}"
+            )
+            evaluation_logger.info(f"=" * 15)
             print()
 
     editor.stop()
@@ -256,9 +255,10 @@ if __name__ == "__main__":
 
     create_pyright_config_file(args.project_path)
     try:
-        logger = create_logger()
+        logger = create_main_logger()
+        evaluation_logger = create_evaluation_logger()
         main(args)
     except Exception as e:
         remove_pyright_config_file(args.project_path)
-        print(f"{Fore.RED}An exception occorred. See logs for more details.")
+        print(f"{Fore.RED}An exception occurred. See logs for more details.")
         logger.error(e)

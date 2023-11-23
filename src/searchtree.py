@@ -82,7 +82,7 @@ def depth_first_traversal(
     layer_specific_indices = [0] * number_of_type_slots
     slot_annotations = [""] * number_of_type_slots
     modified_trees = [original_source_code_tree] + [None] * number_of_type_slots
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger("main")
 
     start_time = time.time()
     while 0 <= layer_index < number_of_type_slots:
