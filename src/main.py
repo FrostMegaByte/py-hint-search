@@ -146,32 +146,45 @@ def main():
                 relative_stub_subdirectory = os.path.relpath(root, working_directory)
                 stub_directory = os.path.join(stubs_path, relative_stub_subdirectory)
                 stub_file = os.path.join(stub_directory, file + "i")
-                with open(stub_file, "r") as f:
-                    stub_code = f.read()
-                stub_tree = cst.parse_module(stub_code)
-                visitor = PyrightTypeAnnotationCollector()
-                stub_tree.visit(visitor)
+                try:
+                    with open(stub_file, "r") as f:
+                        stub_code = f.read()
+                    stub_tree = cst.parse_module(stub_code)
+                    visitor = PyrightTypeAnnotationCollector()
+                    stub_tree.visit(visitor)
 
-                unknown_annotations = set()
-                for pyright_type_annotation in visitor.all_pyright_annotations:
-                    # Handle imports of pyright type annotations
-                    tree_with_import, is_unknown_annotation = add_import_to_searchtree(
-                        ALL_PROJECT_CLASSES,
-                        file_path,
-                        source_code_tree,
-                        pyright_type_annotation,
+                    unknown_annotations = set()
+                    for pyright_type_annotation in visitor.all_pyright_annotations:
+                        # Handle imports of pyright type annotations
+                        (
+                            tree_with_import,
+                            is_unknown_annotation,
+                        ) = add_import_to_searchtree(
+                            ALL_PROJECT_CLASSES,
+                            file_path,
+                            source_code_tree,
+                            pyright_type_annotation,
+                        )
+                        source_code_tree = tree_with_import
+
+                        if is_unknown_annotation:
+                            unknown_annotations.add(pyright_type_annotation)
+                            continue
+
+                    transformer = PyrightTypeAnnotationTransformer(
+                        visitor.annotations, unknown_annotations
                     )
-                    source_code_tree = tree_with_import
-
-                    if is_unknown_annotation:
-                        unknown_annotations.add(pyright_type_annotation)
-                        continue
-
-                transformer = PyrightTypeAnnotationTransformer(
-                    visitor.annotations, unknown_annotations
-                )
-                source_code_tree = source_code_tree.visit(transformer)
-                added_extra_pyright_annotations = True
+                    source_code_tree = source_code_tree.visit(transformer)
+                    added_extra_pyright_annotations = True
+                except FileNotFoundError:
+                    print(
+                        f"{Fore.YELLOW}'{file}' has no related Pyright stub file, but it should have one for better performance.\n"
+                        + "Recommended: Run command to recreate Pyright stubs\n"
+                    )
+                    logger.warning(
+                        f"'{file}' has no related Pyright stub file, but it should have one for better performance.\n"
+                        + "Recommended: Run command to recreate Pyright stubs"
+                    )
 
             # Get already type annotated parameters and return types
             visitor = AlreadyTypeAnnotatedCollector()
