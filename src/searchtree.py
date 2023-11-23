@@ -82,6 +82,7 @@ def depth_first_traversal(
     layer_specific_indices = [0] * number_of_type_slots
     slot_annotations = [""] * number_of_type_slots
     modified_trees = [original_source_code_tree] + [None] * number_of_type_slots
+    logger = logging.getLogger(__name__)
 
     start_time = time.time()
     while 0 <= layer_index < number_of_type_slots:
@@ -89,7 +90,6 @@ def depth_first_traversal(
             print(
                 f"{Fore.RED}Timeout after 5 minutes. File takes too long to process. Likely something wrong with backtracking and filling in the slots..."
             )
-            logger = logging.getLogger(__name__)
             logger.error(
                 "Timeout after 5 minutes. File takes too long to process. Likely something wrong with backtracking and filling in the slots..."
             )
@@ -183,13 +183,11 @@ def depth_first_traversal(
 
     if layer_index < 0:
         print(f"{Fore.RED}No possible combination of type annotations found...")
-        logger = logging.getLogger(__name__)
         logger.error("No possible combination of type annotations found...")
         return original_source_code_tree
 
     if layer_index == number_of_type_slots:
         print(f"{Fore.GREEN}Found a combination of type annotations!")
-        logger = logging.getLogger(__name__)
         logger.info("Found a combination of type annotations!")
 
     return modified_trees[number_of_type_slots]

@@ -1,5 +1,9 @@
 from typing import Any, Dict, List
 import requests
+import logging
+
+logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 class Type4PyException(Exception):

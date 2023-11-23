@@ -66,6 +66,17 @@ def remove_pyright_config_file(project_path: str) -> None:
         os.remove(pyright_config_file)
 
 
+def create_logger() -> logging.Logger:
+    logs_path = os.path.abspath(os.path.join(os.getcwd(), "logs"))
+    os.makedirs(logs_path, exist_ok=True)
+    logging.basicConfig(
+        filename=f"logs/{datetime.today().strftime('%Y-%m-%d %H_%M_%S')}.txt",
+        format="%(asctime)s %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
+        level=logging.DEBUG,
+    )
+    return logging.getLogger(__name__)
+
+
 def create_stub_file(source_code_tree, typed_path, relative_path, file_name) -> None:
     # Create type stub for the type annotated source code tree
     transformer = StubTransformer()
@@ -79,24 +90,12 @@ def create_stub_file(source_code_tree, typed_path, relative_path, file_name) -> 
     ).write(type_annotated_stub_tree.code)
 
 
-def main():
-    args = parse_arguments()
+def main(args: argparse.Namespace) -> None:
     editor = FakeEditor()
-
-    os.chdir(os.path.abspath(os.path.join(args.project_path, "..")))
     working_directory = os.getcwd()
 
-    logs_path = os.path.abspath(os.path.join(working_directory, "logs"))
-    os.makedirs(logs_path, exist_ok=True)
-    logging.basicConfig(
-        filename=f"logs/{datetime.today().strftime('%Y-%m-%d %H_%M_%S')}.txt",
-        format="%(asctime)s %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
-        level=logging.DEBUG,
-    )
-    logger = logging.getLogger(__name__)
-
     root_uri = f"file:///{args.project_path}"
-    workspace_folders = [{"name": "python-lsp", "uri": root_uri}]
+    workspace_folders = [{"name": "type-annotation-searcher", "uri": root_uri}]
 
     stubs_directory = "typings"
     stubs_path = os.path.abspath(os.path.join(working_directory, stubs_directory))
@@ -107,7 +106,6 @@ def main():
 
     ALL_PROJECT_CLASSES = get_all_classes_in_project(args.project_path)
 
-    create_pyright_config_file(args.project_path)
     editor.start(root_uri, workspace_folders)
 
     # Walk through project directories and type annotate all python files
@@ -182,15 +180,13 @@ def main():
                         + "Recommended: Run command to recreate Pyright stubs\n"
                     )
                     logger.warning(
-                        f"'{file}' has no related Pyright stub file, but it should have one for better performance.\n"
+                        f"'{file}' has no related Pyright stub file, but it should have one for better performance. "
                         + "Recommended: Run command to recreate Pyright stubs"
                     )
 
             # Get already type annotated parameters and return types
             visitor = AlreadyTypeAnnotatedCollector()
             source_code_tree.visit(visitor)
-
-            logger.info(source_code_tree.code)
 
             # Get ML type annotation predictions
             try:
@@ -252,8 +248,17 @@ def main():
             print()
 
     editor.stop()
-    remove_pyright_config_file(args.project_path)
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_arguments()
+    os.chdir(os.path.abspath(os.path.join(args.project_path, "..")))
+
+    create_pyright_config_file(args.project_path)
+    try:
+        logger = create_logger()
+        main(args)
+    except Exception as e:
+        remove_pyright_config_file(args.project_path)
+        print(f"{Fore.RED}An exception occorred. See logs for more details.")
+        logger.error(e)
