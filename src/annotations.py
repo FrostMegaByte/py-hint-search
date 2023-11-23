@@ -264,8 +264,9 @@ class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
         self.stack.pop()
         if key in self.annotations:
             annotations = self.annotations[key]
-
             updated_params = list(annotations[0].params)
+
+            # Transform binary operations ...|... to Union[...,...]
             for i, param in enumerate(annotations[0].params):
                 if param.annotation is not None and isinstance(
                     param.annotation.annotation, cst.BinaryOperation
@@ -277,6 +278,13 @@ class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
                         annotation=cst.Annotation(
                             cst.parse_expression(union_annotation)
                         )
+                    )
+
+            # Keep standard default values
+            for i, param in enumerate(updated_node.params.params):
+                if isinstance(param.default, cst.Name):
+                    updated_params[i] = updated_params[i].with_changes(
+                        default=param.default
                     )
 
             updated_params = updated_node.params.with_changes(
