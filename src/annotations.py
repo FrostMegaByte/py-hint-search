@@ -1,3 +1,4 @@
+import re
 from typing import Dict, List, Optional, Set, Tuple
 import libcst as cst
 import libcst.matchers as m
@@ -226,7 +227,11 @@ class BinaryOperationToUnionTransformer(cst.CSTTransformer):
 
 
 def node_to_code(node: cst.CSTNode):
-    return cst.Module([]).code_for_node(node)
+    node_string = cst.Module([]).code_for_node(node)
+    node_string = node_string.replace("\n", "")
+    node_string = re.sub(r"\[\s+", "[", node_string)
+    node_string = re.sub(r"\s+\]", "]", node_string)
+    return node_string
 
 
 def transform_binary_operations_to_unions(node: cst.BinaryOperation):
