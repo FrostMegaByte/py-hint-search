@@ -296,6 +296,34 @@ class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
                 params=tuple(updated_params)
             )
 
+            # TODO: Handle union operators in return annotations. Code below is a start, but results in errors
+            # if annotations[1] is None:
+            #     return updated_node.with_changes(
+            #         params=updated_params,
+            #         returns=annotations[1],
+            #     )
+
+            # Transform binary operations ...|... to Union[...,...]
+            # if annotations[1].annotation is not None and isinstance(
+            #     annotations[1].annotation, cst.BinaryOperation
+            # ):
+            #     union_annotation = transform_binary_operations_to_unions(
+            #         annotations[1].annotation
+            #     )
+            #     return_annotation = annotations[1].with_changes(
+            #         annotation=cst.Annotation(cst.parse_expression(union_annotation))
+            #     )
+            # else:
+            #     return_annotation = (
+            #         annotations[1]
+            #         if annotations[1].annotation.value not in self.unknown_annotations
+            #         else None
+            #     )
+            # return updated_node.with_changes(
+            #     params=updated_params,
+            #     returns=return_annotation,
+            # )
+
             return_annotation = (
                 annotations[1]
                 if annotations[1] is not None
