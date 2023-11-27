@@ -34,6 +34,7 @@ class FakeEditor:
         self.capabilities = self._get_editor_capabilities()
         self.received_diagnostics = False
         self.modified_location = None
+        self.start_errors = []
         self.diagnostics = []
 
     # Singleton class
@@ -150,7 +151,10 @@ class FakeEditor:
             and range["end"]["character"] <= self.modified_location.end.column
         )
 
-    def has_diagnostic_error(self) -> bool:
+    def is_start_error(self) -> bool:
+        return self.error in self.start_errors
+
+    def has_diagnostic_error(self, at_start=False) -> bool:
         DIAGNOSTIC_ERROR_PATTERN = r"cannot be assigned to|is not defined|Operator \".*\" not supported for types \".*\" and \".*\""
         # TODO: Check that the diagnostic error is only for that function where the annotation was changed
 
@@ -159,9 +163,13 @@ class FakeEditor:
                 len(re.findall(DIAGNOSTIC_ERROR_PATTERN, diagnostic["message"])) > 0
             )
 
+            if diagnostic_has_error and at_start:
+                self.start_errors.append(diagnostic["message"])
+
             if diagnostic_has_error and self._error_in_modified_location(
                 diagnostic["range"]
             ):
+                self.error = diagnostic["message"]
                 return True
         return False
 

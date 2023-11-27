@@ -40,7 +40,7 @@ def parse_arguments() -> argparse.Namespace:
         "--project-path",
         type=dir_path,
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach/stripped",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/requests/stripped",
         help="The path to the project which will be type annotated.",
         # required=True,
     )
@@ -118,6 +118,7 @@ def main(args: argparse.Namespace) -> None:
 
             file_path = os.path.join(root, file)
             editor.open_file(file_path)
+            editor.has_diagnostic_error(at_start=True)
 
             python_code = editor.edit_document.text
             if python_code == "":
