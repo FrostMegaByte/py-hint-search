@@ -156,7 +156,6 @@ class FakeEditor:
 
     def has_diagnostic_error(self, at_start=False) -> bool:
         DIAGNOSTIC_ERROR_PATTERN = r"cannot be assigned to|is not defined|Operator \".*\" not supported for types \".*\" and \".*\""
-        # TODO: Check that the diagnostic error is only for that function where the annotation was changed
 
         for diagnostic in self.diagnostics:
             diagnostic_has_error = (

@@ -134,14 +134,14 @@ def parse_arguments() -> argparse.Namespace:
         "--project-path",
         type=dir_path,
         default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/requests/requests",
-        help="The path to the project that will be type annotated.",
+        help="The directory path to the code of the project that will be type annotated.",
         # required=True,
     )
     parser.add_argument(
         "--stubs-path",
         type=dir_path,
         default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/typeshed/stubs/requests/requests",
-        help="The path to the stub files of the project that will be type annotated.",
+        help="The directory path to the stub files of the project that will be type annotated.",
         # required=True,
     )
 
@@ -162,6 +162,11 @@ def main():
         python_files = [file for file in files if file.endswith(".py")]
         for file in python_files:
             relative_path = os.path.relpath(root, args.project_path)
+            output_fully_annotated_directory = os.path.abspath(
+                os.path.join(fully_annotated_path, relative_path)
+            )
+            os.makedirs(output_fully_annotated_directory, exist_ok=True)
+
             stub_code_file_path = os.path.abspath(
                 os.path.join(stubs_path, relative_path, file + "i")
             )
@@ -182,17 +187,19 @@ def main():
                 merged_python_code = merge_stub_annotations_in_code(
                     python_code, stub_code
                 )
-
-                output_fully_annotated_directory = os.path.abspath(
-                    os.path.join(fully_annotated_path, relative_path)
-                )
-                os.makedirs(output_fully_annotated_directory, exist_ok=True)
                 open(
                     os.path.join(output_fully_annotated_directory, file),
                     "w",
                     encoding="utf-8",
                 ).write(merged_python_code)
-            # TODO: Also copy files that do not have a matching stub file. Otherwise the projects will lose files.
+            else:
+                print(f"Copying over: {os.path.join(relative_path, file)}")
+                in_file = os.path.join(root, file)
+                out_file = os.path.join(output_fully_annotated_directory, file)
+                with open(in_file, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                    with open(out_file, "w", encoding="utf-8") as f1:
+                        f1.writelines(lines)
 
 
 if __name__ == "__main__":
