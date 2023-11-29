@@ -2,7 +2,7 @@ import os
 import ast
 import logging
 import re
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Union
 import typing
 import libcst as cst
 import libcst.matchers as m
@@ -117,22 +117,23 @@ def add_import_to_searchtree(
 class ImportInserter(cst.CSTTransformer):
     def __init__(self, import_statement: str):
         self.import_statement = import_statement
+        self.imports: List[Union[cst.Import, cst.ImportFrom]] = []
+
+    def visit_Import(self, node: cst.Import) -> cst.Import:
+        self.imports.append(node)
+
+    def visit_ImportFrom(self, node: cst.ImportFrom) -> cst.ImportFrom:
+        self.imports.append(node)
 
     def leave_Module(
         self, original_node: cst.Module, updated_node: cst.Module
     ) -> cst.Module:
         imp = cst.parse_statement(self.import_statement)
-        # import2 = cst.parse_statement("from taart import Taart")
-
-        # # Check if the two import statements match
-        # if m.matches(imp, import2):
-        #     print("The import statements are the same")
-        # else:
-        #     print("The import statements are different")
-
-        # import_is_present = bool(
-        #     [True for i in updated_node.children if m.matches(i, imp)]
-        # )
-        # if not import_is_present:
-        body_with_import = (imp,) + updated_node.body
-        return updated_node.with_changes(body=body_with_import)
+        existing_import_items = set(
+            [n.evaluated_name for i in self.imports for n in i.names]
+        )
+        import_item = imp.body[0].names[0].evaluated_name
+        if import_item not in existing_import_items:
+            body_with_import = (imp,) + updated_node.body
+            return updated_node.with_changes(body=body_with_import)
+        return updated_node
