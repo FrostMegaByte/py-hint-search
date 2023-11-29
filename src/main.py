@@ -39,7 +39,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example/stripped",
         default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/requests/stripped",
         help="The path to the project which will be type annotated.",
         # required=True,
@@ -64,6 +64,18 @@ def remove_pyright_config_file(project_path: str) -> None:
     pyright_config_file = os.path.join(project_path, "pyrightconfig.json")
     if os.path.exists(pyright_config_file):
         os.remove(pyright_config_file)
+
+
+def create_type_annotated_source_code_file(
+    source_code_tree, typed_path, relative_path, file_name
+) -> None:
+    output_typed_directory = os.path.abspath(
+        os.path.join(typed_path + "-source-code", relative_path)
+    )
+    os.makedirs(output_typed_directory, exist_ok=True)
+    open(os.path.join(output_typed_directory, file_name), "w", encoding="utf-8").write(
+        source_code_tree.code
+    )
 
 
 def create_stub_file(source_code_tree, typed_path, relative_path, file_name) -> None:
@@ -164,6 +176,8 @@ def main(args: argparse.Namespace) -> None:
                         visitor.annotations, unknown_annotations
                     )
                     source_code_tree = source_code_tree.visit(transformer)
+                    editor.change_file(source_code_tree.code, None)
+                    editor.has_diagnostic_error(at_start=True)
                     added_extra_pyright_annotations = True
                 except FileNotFoundError:
                     print(
@@ -232,6 +246,9 @@ def main(args: argparse.Namespace) -> None:
                 ALL_PROJECT_CLASSES,
             )
 
+            create_type_annotated_source_code_file(
+                type_annotated_source_code_tree, typed_path, relative_path, file
+            )
             create_stub_file(
                 type_annotated_source_code_tree, typed_path, relative_path, file
             )
@@ -254,11 +271,12 @@ if __name__ == "__main__":
     args = parse_arguments()
     os.chdir(os.path.abspath(os.path.join(args.project_path, "..")))
 
-    create_pyright_config_file(args.project_path)
     try:
+        create_pyright_config_file(args.project_path)
         logger = create_main_logger()
         evaluation_logger = create_evaluation_logger()
         main(args)
+        remove_pyright_config_file(args.project_path)
     except Exception as e:
         remove_pyright_config_file(args.project_path)
         print(f"{Fore.RED}An exception occurred. See logs for more details.")
