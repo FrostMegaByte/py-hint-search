@@ -19,7 +19,7 @@ class ParameterTypeAnnotationInserter(cst.CSTTransformer):
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
         self.stack.append(node.name.value)
-        return False
+        return True
 
     def leave_ClassDef(
         self, original_node: cst.ClassDef, updated_node: cst.ClassDef
@@ -68,7 +68,7 @@ class ReturnTypeAnnotationInserter(cst.CSTTransformer):
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
         self.stack.append(node.name.value)
-        return False
+        return True
 
     def leave_ClassDef(
         self, original_node: cst.ClassDef, updated_node: cst.ClassDef
@@ -190,6 +190,8 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
                 annotation = transform_binary_operations_to_unions(
                     cst.parse_expression(annotation)
                 )
+            if "@" in annotation:
+                annotation = annotation.split("@")[0]
             return_annotation = cst.Annotation(cst.parse_expression(annotation))
             self.annotations[tuple(self.stack)] = (node.params, return_annotation)
             self.all_pyright_annotations.add(annotation)
@@ -287,34 +289,6 @@ class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
             updated_params = updated_node.params.with_changes(
                 params=tuple(updated_params)
             )
-
-            # TODO: Handle union operators in return annotations. Code below is a start, but results in errors
-            # if annotations[1] is None:
-            #     return updated_node.with_changes(
-            #         params=updated_params,
-            #         returns=annotations[1],
-            #     )
-
-            # Transform binary operations ...|... to Union[...,...]
-            # if annotations[1].annotation is not None and isinstance(
-            #     annotations[1].annotation, cst.BinaryOperation
-            # ):
-            #     union_annotation = transform_binary_operations_to_unions(
-            #         annotations[1].annotation
-            #     )
-            #     return_annotation = annotations[1].with_changes(
-            #         annotation=cst.Annotation(cst.parse_expression(union_annotation))
-            #     )
-            # else:
-            #     return_annotation = (
-            #         annotations[1]
-            #         if annotations[1].annotation.value not in self.unknown_annotations
-            #         else None
-            #     )
-            # return updated_node.with_changes(
-            #     params=updated_params,
-            #     returns=return_annotation,
-            # )
 
             return_annotation = (
                 annotations[1]
