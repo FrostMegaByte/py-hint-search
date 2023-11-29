@@ -80,8 +80,9 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/requests/fully-annotated",
         help="The path to the project which will be stripped from type hints.",
-        required=True,
+        # required=True,
     )
 
     return parser.parse_args()

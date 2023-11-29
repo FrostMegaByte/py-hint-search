@@ -43,7 +43,7 @@ class TypeAnnotationsCollector(cst.CSTVisitor):
         )
         self.all_type_slots[tuple(self.stack)] = return_annotation
         self.stack.pop()
-        return False
+        return True
 
     def leave_FunctionDef(self, node: cst.FunctionDef) -> None:
         self.stack.pop()
@@ -63,14 +63,14 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--ml-annotated-project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach/type-annotated",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/requests/type-annotated-source-code",
         help="The path to the project which will be stripped from type hints.",
         # required=True,
     )
     parser.add_argument(
         "--fully-annotated-project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach/fully-annotated",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/requests/fully-annotated",
         help="The path to the project which will be stripped from type hints.",
         # required=True,
     )
@@ -121,6 +121,7 @@ def main():
             assert len(visitor_fully_annotated.all_type_slots) == len(
                 visitor_ml_annotated.all_type_slots
             )
+
             groundtruth_annotations = {
                 k: v
                 for k, v in visitor_fully_annotated.all_type_slots.items()
@@ -155,11 +156,19 @@ def main():
 
             n_all = len([v for v in ml_annotations.values() if v is not None])
             D = len(groundtruth_annotations)
+            try:
+                precision = n_correct / n_all
+            except ZeroDivisionError:
+                precision = 1
+            try:
+                recall = n_correct / D
+            except ZeroDivisionError:
+                recall = 1
             print(
                 f"Total correct annotations:\t{n_correct}/{n_correct + n_incorrect}\n"
                 f"Total incorrect annotations:\t{n_incorrect}/{n_correct + n_incorrect}\n"
-                f"Precision:\t{n_correct/n_all}\n"
-                f"Recall:\t\t{n_correct/D}\n"
+                f"Precision:\t{precision}\n"
+                f"Recall:\t\t{recall}\n"
             )
             print("-" * 15)
 
