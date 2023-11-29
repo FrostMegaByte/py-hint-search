@@ -164,7 +164,7 @@ def depth_first_traversal(
         editor.change_file(modified_tree.code, modified_location)
 
         # On error, change pointers to try next type annotation
-        if editor.has_diagnostic_error() and not editor.is_start_error():
+        if editor.has_diagnostic_error():
             layer_specific_indices[layer_index] += 1
             while layer_specific_indices[layer_index] >= len(
                 search_tree[f"layer_{layer_index}"]["predictions"]

@@ -34,7 +34,7 @@ class FakeEditor:
         self.capabilities = self._get_editor_capabilities()
         self.received_diagnostics = False
         self.modified_location = None
-        self.start_errors = []
+        self.start_errors = set()
         self.diagnostics = []
 
     # Singleton class
@@ -151,24 +151,27 @@ class FakeEditor:
             and range["end"]["character"] <= self.modified_location.end.column
         )
 
-    def is_start_error(self) -> bool:
-        return self.error in self.start_errors
-
     def has_diagnostic_error(self, at_start=False) -> bool:
-        DIAGNOSTIC_ERROR_PATTERN = r"cannot be assigned to|is not defined|Operator \".*\" not supported for types \".*\" and \".*\""
+        ERROR_PATTERN = r'cannot be assigned to|is not defined|Operator ".*" not supported for types ".*" and ".*"'
+        ALLOWED_PATTERN = r'"Unknown" is not defined'
 
         for diagnostic in self.diagnostics:
             diagnostic_has_error = (
-                len(re.findall(DIAGNOSTIC_ERROR_PATTERN, diagnostic["message"])) > 0
+                len(re.findall(ERROR_PATTERN, diagnostic["message"])) > 0
             )
-
             if diagnostic_has_error and at_start:
-                self.start_errors.append(diagnostic["message"])
+                self.start_errors.add(diagnostic["message"])
 
             if diagnostic_has_error and self._error_in_modified_location(
                 diagnostic["range"]
             ):
-                self.error = diagnostic["message"]
+                diagnostic_is_allowed = (
+                    len(re.findall(ALLOWED_PATTERN, diagnostic["message"])) > 0
+                    or diagnostic["message"] in self.start_errors
+                )
+                if diagnostic_is_allowed:
+                    continue
+
                 return True
         return False
 
