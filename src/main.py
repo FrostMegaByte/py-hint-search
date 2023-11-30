@@ -6,8 +6,7 @@ import colorama
 from colorama import Fore
 from stubs import StubTransformer
 
-from type4py_api import Type4PyException, get_type4py_predictions
-from pyright_typestubs_creator import create_pyright_typestubs
+from type4py_api import Type4PyException, get_ordered_type4py_predictions
 from annotations import (
     AlreadyTypeAnnotatedCollector,
     PyrightTypeAnnotationCollector,
@@ -39,8 +38,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example/stripped",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/requests/stripped",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/django/stripped",
         help="The path to the project which will be type annotated.",
         # required=True,
     )
@@ -195,7 +194,7 @@ def main(args: argparse.Namespace) -> None:
 
             # Get ML type annotation predictions
             try:
-                ml_predictions = get_type4py_predictions(source_code_tree.code)
+                ml_predictions = get_ordered_type4py_predictions(source_code_tree.code)
             except Type4PyException:
                 print(
                     f"{Fore.YELLOW}'{file}' cannot be parsed by Type4Py. Skipping...\n"
