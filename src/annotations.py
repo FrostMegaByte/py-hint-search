@@ -185,14 +185,21 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
             and node.body.header.comment is not None
         ):
             comment = node.body.header.comment.value
-            annotation = comment.split("->")[1].strip()[:-1]
+            annotation = comment.replace("# -> ", "").strip()[:-1]
+            if annotation.startswith("("):
+                annotation = ""
             if "|" in annotation:
                 annotation = transform_binary_operations_to_unions(
                     cst.parse_expression(annotation)
                 )
             if "@" in annotation:
                 annotation = annotation.split("@")[0]
-            return_annotation = cst.Annotation(cst.parse_expression(annotation))
+
+            return_annotation = (
+                cst.Annotation(cst.parse_expression(annotation))
+                if annotation != ""
+                else None
+            )
             self.annotations[tuple(self.stack)] = (node.params, return_annotation)
             self.all_pyright_annotations.add(annotation)
         else:
