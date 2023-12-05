@@ -186,6 +186,8 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
         ):
             comment = node.body.header.comment.value
             annotation = comment.replace("# -> ", "").strip()[:-1]
+            if "…" in annotation:
+                annotation = annotation.replace("…", "")
             if annotation.startswith("("):
                 annotation = ""
             if "|" in annotation:

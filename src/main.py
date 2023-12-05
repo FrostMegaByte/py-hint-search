@@ -147,7 +147,7 @@ def main(args: argparse.Namespace) -> None:
                 stub_directory = os.path.join(stubs_path, relative_stub_subdirectory)
                 stub_file = os.path.join(stub_directory, file + "i")
                 try:
-                    with open(stub_file, "r") as f:
+                    with open(stub_file, "r", encoding="utf-8") as f:
                         stub_code = f.read()
                     stub_tree = cst.parse_module(stub_code)
                     visitor = PyrightTypeAnnotationCollector()
@@ -227,7 +227,7 @@ def main(args: argparse.Namespace) -> None:
                     logger.info(f"'{file}' has no type slots to fill. Skipping...")
                     editor.close_file()
                     continue
-            if number_of_type_slots >= 80:
+            if number_of_type_slots >= 100:
                 print(f"{Fore.RED}'{file}' contains too many type slots. Skipping...\n")
                 logger.warning(f"'{file}' contains too many type slots. Skipping...")
                 editor.close_file()

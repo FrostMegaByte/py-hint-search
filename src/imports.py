@@ -82,6 +82,12 @@ def add_import_to_searchtree(
         else [type_annotation]
     )
 
+    # Handle "Literal" edge case
+    if "Literal" in potential_annotation_imports:
+        literal_index = potential_annotation_imports.index("Literal")
+        if literal_index + 1 < len(potential_annotation_imports):
+            del potential_annotation_imports[literal_index + 1]
+
     is_unknown_annotation = False
     for annotation in potential_annotation_imports:
         if annotation in BUILT_IN_TYPES:
