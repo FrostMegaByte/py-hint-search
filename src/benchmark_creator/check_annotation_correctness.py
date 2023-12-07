@@ -1,7 +1,10 @@
 import argparse
+from datetime import datetime
+import logging
 import os
 from typing import Dict, List, Optional, Tuple
 import libcst as cst
+import csv
 
 import colorama
 from colorama import Fore
@@ -63,25 +66,53 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--ml-annotated-project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/requests/type-annotated-source-code",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/type-annotated-source-code",
         help="The path to the project which will be stripped from type hints.",
         # required=True,
     )
     parser.add_argument(
         "--fully-annotated-project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/requests/fully-annotated",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/fully-annotated",
         help="The path to the project which will be stripped from type hints.",
+        # required=True,
+    )
+    parser.add_argument(
+        "--verbose",
+        type=bool,
+        default=True,
+        help="Log which fully annotated type and ML-determined type don't match.",
         # required=True,
     )
 
     return parser.parse_args()
 
 
+def create_results_csv_file():
+    headers = ["file", "correct", "incorrect", "total", "precision", "recall"]
+    with open(
+        "logs-evaluation/evaluation results.csv",
+        "w",
+        newline="",
+    ) as file:
+        writer = csv.writer(file)
+        writer.writerow(headers)
+
+
+def append_to_results_csv_file(results):
+    with open(
+        "logs-evaluation/evaluation results.csv",
+        "a",
+        newline="",
+    ) as file:
+        writer = csv.writer(file)
+        writer.writerow(results)
+
+
 def main():
     args = parse_arguments()
     os.chdir(os.path.abspath(os.path.join(args.fully_annotated_project_path, "..")))
-    working_directory = os.getcwd()
+    create_results_csv_file()
 
     for root, dirs, files in os.walk(args.fully_annotated_project_path):
         python_files = [file for file in files if file.endswith(".py")]
@@ -104,9 +135,7 @@ def main():
 
             try:
                 ml_annotated_file_path = os.path.abspath(
-                    os.path.join(
-                        args.ml_annotated_project_path, relative_path, file + "i"
-                    )
+                    os.path.join(args.ml_annotated_project_path, relative_path, file)
                 )
                 ml_annotated_code = open(
                     ml_annotated_file_path, "r", encoding="utf-8"
@@ -115,17 +144,19 @@ def main():
                 visitor_ml_annotated = TypeAnnotationsCollector()
                 ml_annotated_tree.visit(visitor_ml_annotated)
             except FileNotFoundError as e:
-                print(f"{Fore.RED}No ML annotated file found for '{file}'.")
+                print(f"{Fore.RED}No ML annotated file found for '{file}'")
                 continue
 
-            assert len(visitor_fully_annotated.all_type_slots) == len(
-                visitor_ml_annotated.all_type_slots
-            )
-
+            INCORRECT_GROUND_TRUTHS = {
+                None,
+                "Incomplete",
+                "Incomplete | None",
+                "Optional[Incomplete]",
+            }
             groundtruth_annotations = {
                 k: v
                 for k, v in visitor_fully_annotated.all_type_slots.items()
-                if v is not None
+                if v not in INCORRECT_GROUND_TRUTHS
             }
             ml_annotations = {
                 k: v
@@ -133,9 +164,12 @@ def main():
                 if k in groundtruth_annotations
             }
 
+            assert len(groundtruth_annotations) == len(ml_annotations)
+
             for slot, groundtruth_annotation in groundtruth_annotations.items():
                 ml_annotation = ml_annotations[slot]
 
+                # Parse binary operations to unions
                 if "|" in groundtruth_annotation:
                     groundtruth_annotation = transform_binary_operations_to_unions(
                         cst.parse_expression(groundtruth_annotation)
@@ -147,30 +181,44 @@ def main():
 
                 if ml_annotation != groundtruth_annotation:
                     n_incorrect += 1
-                    print(f"{Fore.RED}Annotation mismatch for '{slot}':")
-                    print(f"{Fore.RED}Fully annotated: {groundtruth_annotation}")
-                    print(f"{Fore.RED}ML annotated: {ml_annotation}")
-                    print()
+                    if args.verbose:
+                        print(f"{Fore.RED}Annotation mismatch for '{slot}':")
+                        print(f"{Fore.RED}Fully annotated: {groundtruth_annotation}")
+                        print(f"{Fore.RED}ML annotated: {ml_annotation}")
+                        print()
                 else:
                     n_correct += 1
 
-            n_all = len([v for v in ml_annotations.values() if v is not None])
-            D = len(groundtruth_annotations)
             try:
+                n_all = len([v for v in ml_annotations.values() if v is not None])
                 precision = n_correct / n_all
             except ZeroDivisionError:
-                precision = 1
+                precision = 1.0
             try:
+                D = len(groundtruth_annotations)
                 recall = n_correct / D
             except ZeroDivisionError:
-                recall = 1
-            print(
-                f"Total correct annotations:\t{n_correct}/{n_correct + n_incorrect}\n"
-                f"Total incorrect annotations:\t{n_incorrect}/{n_correct + n_incorrect}\n"
-                f"Precision:\t{precision}\n"
-                f"Recall:\t\t{recall}\n"
-            )
-            print("-" * 15)
+                recall = 1.0
+
+            if args.verbose:
+                print(
+                    f"Total correct annotations:\t{n_correct}/{n_correct + n_incorrect}\n"
+                    f"Total incorrect annotations:\t{n_incorrect}/{n_correct + n_incorrect}\n"
+                    f"Precision:\t{precision}\n"
+                    f"Recall:\t\t{recall}"
+                )
+                print("-" * 15)
+
+            total = n_correct + n_incorrect
+            results = [
+                os.path.join(relative_path, file),
+                n_correct,
+                n_incorrect,
+                total,
+                precision,
+                recall,
+            ]
+            append_to_results_csv_file(results)
 
 
 if __name__ == "__main__":
