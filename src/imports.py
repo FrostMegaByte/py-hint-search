@@ -5,7 +5,6 @@ import re
 from typing import Dict, List, Optional, Union
 import typing
 import libcst as cst
-import libcst.matchers as m
 
 BUILT_IN_TYPES = {
     "bool",
@@ -136,7 +135,12 @@ class ImportInserter(cst.CSTTransformer):
     ) -> cst.Module:
         imp = cst.parse_statement(self.import_statement)
         existing_import_items = set(
-            [n.evaluated_name for i in self.imports for n in i.names]
+            [
+                n.evaluated_name
+                for i in self.imports
+                if not isinstance(i.names, cst.ImportStar)
+                for n in i.names
+            ]
         )
         import_item = imp.body[0].names[0].evaluated_name
         if import_item not in existing_import_items:

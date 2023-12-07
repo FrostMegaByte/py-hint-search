@@ -186,16 +186,16 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
         ):
             comment = node.body.header.comment.value
             annotation = comment.replace("# -> ", "").strip()[:-1]
+            if any(symbol in annotation for symbol in ["(", "<"]):
+                annotation = ""
             if "…" in annotation:
                 annotation = annotation.replace("…", "")
-            if annotation.startswith("("):
-                annotation = ""
             if "|" in annotation:
                 annotation = transform_binary_operations_to_unions(
                     cst.parse_expression(annotation)
                 )
             if "@" in annotation:
-                annotation = annotation.split("@")[0]
+                annotation = re.sub(r"@(\w+)", "", annotation)
 
             return_annotation = (
                 cst.Annotation(cst.parse_expression(annotation))
