@@ -122,6 +122,20 @@ def insert_return_annotation(
     return modified_tree, transformer.updated_function_location
 
 
+class RemoveIncompleteAnnotations(cst.CSTTransformer):
+    def leave_Annotation(
+        self, original_node: cst.Annotation, updated_node: cst.Annotation
+    ) -> cst.Annotation:
+        annotation_string = node_to_code(updated_node.annotation)
+        if annotation_string in [
+            "Incomplete",
+            "Optional[Incomplete]",
+            "Incomplete | None",
+        ]:
+            return cst.RemoveFromParent()
+        return updated_node
+
+
 class AlreadyTypeAnnotatedCollector(cst.CSTVisitor):
     def __init__(self) -> None:
         self.stack: List[Tuple[str, ...]] = []
@@ -196,6 +210,8 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
                 )
             if "@" in annotation:
                 annotation = re.sub(r"@(\w+)", "", annotation)
+            if annotation in ["Incomplete", "Optional[Incomplete]"]:
+                annotation = ""
 
             return_annotation = (
                 cst.Annotation(cst.parse_expression(annotation))

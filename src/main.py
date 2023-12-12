@@ -11,6 +11,7 @@ from annotations import (
     AlreadyTypeAnnotatedCollector,
     PyrightTypeAnnotationCollector,
     PyrightTypeAnnotationTransformer,
+    RemoveIncompleteAnnotations,
 )
 from fake_editor import FakeEditor
 from imports import add_import_to_searchtree, get_all_classes_in_project
@@ -139,6 +140,9 @@ def main(args: argparse.Namespace) -> None:
                 continue
 
             source_code_tree = cst.parse_module(python_code)
+
+            incomplete_transformer = RemoveIncompleteAnnotations()
+            source_code_tree = source_code_tree.visit(incomplete_transformer)
 
             # Add type annotations inferred by Pyright
             added_extra_pyright_annotations = False
