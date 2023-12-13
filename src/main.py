@@ -9,6 +9,7 @@ from stubs import StubTransformer
 from type4py_api import Type4PyException, get_ordered_type4py_predictions
 from annotations import (
     AlreadyTypeAnnotatedCollector,
+    BinaryTransformer,
     PyrightTypeAnnotationCollector,
     PyrightTypeAnnotationTransformer,
     RemoveIncompleteAnnotations,
@@ -39,8 +40,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/django/stripped",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/fully-annotated",
         help="The path to the project which will be type annotated.",
         # required=True,
     )
@@ -141,9 +142,6 @@ def main(args: argparse.Namespace) -> None:
 
             source_code_tree = cst.parse_module(python_code)
 
-            incomplete_transformer = RemoveIncompleteAnnotations()
-            source_code_tree = source_code_tree.visit(incomplete_transformer)
-
             # Add type annotations inferred by Pyright
             added_extra_pyright_annotations = False
             if PYRIGHT_ANNOTATIONS_EXIST:
@@ -157,12 +155,12 @@ def main(args: argparse.Namespace) -> None:
                     visitor = PyrightTypeAnnotationCollector()
                     stub_tree.visit(visitor)
 
-                    unknown_annotations = set()
+                    all_unknown_annotations = set()
                     for pyright_type_annotation in visitor.all_pyright_annotations:
                         # Handle imports of pyright type annotations
                         (
                             tree_with_import,
-                            is_unknown_annotation,
+                            unknown_annotations,
                         ) = add_import_to_searchtree(
                             ALL_PROJECT_CLASSES,
                             file_path,
@@ -171,12 +169,12 @@ def main(args: argparse.Namespace) -> None:
                         )
                         source_code_tree = tree_with_import
 
-                        if is_unknown_annotation:
-                            unknown_annotations.add(pyright_type_annotation)
+                        if len(unknown_annotations) > 0:
+                            all_unknown_annotations |= unknown_annotations
                             continue
 
                     transformer = PyrightTypeAnnotationTransformer(
-                        visitor.annotations, unknown_annotations
+                        visitor.annotations, all_unknown_annotations
                     )
                     source_code_tree = source_code_tree.visit(transformer)
                     editor.change_file(source_code_tree.code, None)
@@ -192,9 +190,11 @@ def main(args: argparse.Namespace) -> None:
                         + "Recommended: Run command to recreate Pyright stubs"
                     )
 
-            # Get already type annotated parameters and return types
-            visitor = AlreadyTypeAnnotatedCollector()
-            source_code_tree.visit(visitor)
+            incomplete_transformer = RemoveIncompleteAnnotations()
+            source_code_tree = source_code_tree.visit(incomplete_transformer)
+
+            binary_ops_transformer = BinaryTransformer()
+            source_code_tree = source_code_tree.visit(binary_ops_transformer)            
 
             # Get ML type annotation predictions
             try:
@@ -206,6 +206,10 @@ def main(args: argparse.Namespace) -> None:
                 logger.warning(f"'{file}' cannot be parsed by Type4Py. Skipping...")
                 editor.close_file()
                 continue
+            
+            # Get already type annotated parameters and return types
+            visitor = AlreadyTypeAnnotatedCollector()
+            source_code_tree.visit(visitor)
 
             # Transform the predictions and filter out already type annotated parameters and return types
             search_tree_layers = transform_predictions_to_array_to_process(
@@ -274,13 +278,19 @@ if __name__ == "__main__":
     args = parse_arguments()
     os.chdir(os.path.abspath(os.path.join(args.project_path, "..")))
 
-    try:
-        create_pyright_config_file(args.project_path)
-        logger = create_main_logger()
-        evaluation_logger = create_evaluation_logger()
-        main(args)
-        remove_pyright_config_file(args.project_path)
-    except Exception as e:
-        remove_pyright_config_file(args.project_path)
-        print(f"{Fore.RED}An exception occurred. See logs for more details.")
-        logger.error(e)
+    create_pyright_config_file(args.project_path)
+    logger = create_main_logger()
+    evaluation_logger = create_evaluation_logger()
+    main(args)
+    remove_pyright_config_file(args.project_path)
+
+    # try:
+    #     create_pyright_config_file(args.project_path)
+    #     logger = create_main_logger()
+    #     evaluation_logger = create_evaluation_logger()
+    #     main(args)
+    #     remove_pyright_config_file(args.project_path)
+    # except Exception as e:
+    #     remove_pyright_config_file(args.project_path)
+    #     print(f"{Fore.RED}An exception occurred. See logs for more details.")
+    #     logger.error(e)

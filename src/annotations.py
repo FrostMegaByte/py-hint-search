@@ -136,6 +136,18 @@ class RemoveIncompleteAnnotations(cst.CSTTransformer):
         return updated_node
 
 
+class BinaryTransformer(cst.CSTTransformer):
+    def leave_Annotation(
+        self, original_node: cst.Annotation, updated_node: cst.Annotation
+    ) -> cst.Annotation:
+        if isinstance(updated_node.annotation, cst.BinaryOperation):
+            union_annotation = transform_binary_operations_to_unions(
+                updated_node.annotation
+            )
+            return updated_node.with_changes(annotation=union_annotation)
+        return updated_node
+
+
 class AlreadyTypeAnnotatedCollector(cst.CSTVisitor):
     def __init__(self) -> None:
         self.stack: List[Tuple[str, ...]] = []
@@ -183,15 +195,9 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
 
         for param in node.params.params:
             if param.annotation is not None:
-                if isinstance(param.annotation.annotation, cst.BinaryOperation):
-                    union_annotation = transform_binary_operations_to_unions(
-                        param.annotation.annotation
-                    )
-                    self.all_pyright_annotations.add(union_annotation)
-                else:
-                    self.all_pyright_annotations.add(
-                        node_to_code(param.annotation.annotation)
-                    )
+                self.all_pyright_annotations.add(
+                    node_to_code(param.annotation.annotation)
+                )
 
         if (
             node.returns is None
@@ -204,14 +210,8 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
                 annotation = ""
             if "…" in annotation:
                 annotation = annotation.replace("…", "")
-            if "|" in annotation:
-                annotation = transform_binary_operations_to_unions(
-                    cst.parse_expression(annotation)
-                )
             if "@" in annotation:
                 annotation = re.sub(r"@(\w+)", "", annotation)
-            if annotation in ["Incomplete", "Optional[Incomplete]"]:
-                annotation = ""
 
             return_annotation = (
                 cst.Annotation(cst.parse_expression(annotation))
@@ -263,7 +263,7 @@ def node_to_code(node: cst.CSTNode):
 def transform_binary_operations_to_unions(node: cst.BinaryOperation):
     transformer = BinaryOperationToUnionTransformer()
     transformed_annotation = node.visit(transformer)
-    return node_to_code(transformed_annotation)
+    return transformed_annotation
 
 
 class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
@@ -297,20 +297,6 @@ class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
             annotations = self.annotations[key]
             updated_params = list(annotations[0].params)
 
-            # Transform binary operations ...|... to Union[...,...]
-            for i, param in enumerate(annotations[0].params):
-                if param.annotation is not None and isinstance(
-                    param.annotation.annotation, cst.BinaryOperation
-                ):
-                    union_annotation = transform_binary_operations_to_unions(
-                        param.annotation.annotation
-                    )
-                    updated_params[i] = param.with_changes(
-                        annotation=cst.Annotation(
-                            cst.parse_expression(union_annotation)
-                        )
-                    )
-
             updated_params = updated_node.params.with_changes(
                 params=tuple(updated_params)
             )
@@ -318,7 +304,8 @@ class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
             return_annotation = (
                 annotations[1]
                 if annotations[1] is not None
-                and annotations[1].annotation.value not in self.unknown_annotations
+                and node_to_code(annotations[1].annotation)
+                not in self.unknown_annotations
                 else None
             )
             return updated_node.with_changes(

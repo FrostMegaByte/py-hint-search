@@ -81,17 +81,27 @@ def add_import_to_searchtree(
         else [type_annotation]
     )
 
+    # Handle "|" edge case
+    potential_annotation_imports = [
+        item.strip() for imp in potential_annotation_imports for item in imp.split("|")
+    ]
+
     # Handle "Literal" edge case
     if "Literal" in potential_annotation_imports:
         literal_index = potential_annotation_imports.index("Literal")
         if literal_index + 1 < len(potential_annotation_imports):
             del potential_annotation_imports[literal_index + 1]
 
-    is_unknown_annotation = False
+    unknown_annotations = set()
     for annotation in potential_annotation_imports:
         if annotation in BUILT_IN_TYPES:
             continue
-        elif annotation in typing.__all__:
+        elif annotation == "Incomplete":
+            continue
+        elif annotation == "Unknown":
+            # Check if Unknown would otherwise be classified as unknown_annotations if this condition was not added
+            continue
+        elif annotation in typing.__all__ or annotation == "LiteralString":
             transformer = ImportInserter(f"from typing import {annotation}")
             source_code_tree = source_code_tree.visit(transformer)
         elif "." in annotation:
@@ -106,7 +116,7 @@ def add_import_to_searchtree(
             )
 
             if import_module_path is None:
-                is_unknown_annotation = True
+                unknown_annotations.add(annotation)
                 break
 
             transformer = ImportInserter(
@@ -114,9 +124,9 @@ def add_import_to_searchtree(
             )
             source_code_tree = source_code_tree.visit(transformer)
         else:
-            is_unknown_annotation = True
+            unknown_annotations.add(annotation)
             break
-    return source_code_tree, is_unknown_annotation
+    return source_code_tree, unknown_annotations
 
 
 class ImportInserter(cst.CSTTransformer):
