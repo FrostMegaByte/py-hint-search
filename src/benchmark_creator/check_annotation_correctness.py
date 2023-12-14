@@ -64,20 +64,25 @@ def parse_arguments() -> argparse.Namespace:
             raise NotADirectoryError(string)
 
     parser.add_argument(
+        "-mlpp",
         "--ml-annotated-project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/type-annotated-source-code",
-        help="The path to the project which will be stripped from type hints.",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/type-annotated-source-code",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/type-annotated-source-code",
+        help="The path to the ML annotated project directory.",
         # required=True,
     )
     parser.add_argument(
+        "-fapp",
         "--fully-annotated-project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/fully-annotated",
-        help="The path to the project which will be stripped from type hints.",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/fully-annotated",
+        help="The path to the fully annotated project directory.",
         # required=True,
     )
     parser.add_argument(
+        "-v",
         "--verbose",
         type=bool,
         default=True,
@@ -89,7 +94,18 @@ def parse_arguments() -> argparse.Namespace:
 
 
 def create_results_csv_file():
-    headers = ["file", "correct", "incorrect", "total", "precision", "recall"]
+    headers = [
+        "file",
+        "correct",
+        "incorrect",
+        "# ground truth annotations",
+        "# available type slots",
+        "precision",
+        "recall",
+        "# extra ML annotations",
+        f"% extra ML annotations",
+        "# total type slots",
+    ]
     with open(
         "logs-evaluation/evaluation results.csv",
         "w",
@@ -147,7 +163,7 @@ def main():
                 print(f"{Fore.RED}No ML annotated file found for '{file}'")
                 continue
 
-            INCORRECT_GROUND_TRUTHS = {
+            UNANNOTATED_GROUND_TRUTHS = {
                 None,
                 "Incomplete",
                 "Incomplete | None",
@@ -156,7 +172,7 @@ def main():
             groundtruth_annotations = {
                 k: v
                 for k, v in visitor_fully_annotated.all_type_slots.items()
-                if v not in INCORRECT_GROUND_TRUTHS
+                if v not in UNANNOTATED_GROUND_TRUTHS
             }
             ml_annotations = {
                 k: v
@@ -193,30 +209,42 @@ def main():
                 n_all = len([v for v in ml_annotations.values() if v is not None])
                 precision = n_correct / n_all
             except ZeroDivisionError:
-                precision = 1.0
+                precision = "-"
             try:
                 D = len(groundtruth_annotations)
                 recall = n_correct / D
             except ZeroDivisionError:
-                recall = 1.0
+                recall = "-"
 
-            if args.verbose:
-                print(
-                    f"Total correct annotations:\t{n_correct}/{n_correct + n_incorrect}\n"
-                    f"Total incorrect annotations:\t{n_incorrect}/{n_correct + n_incorrect}\n"
-                    f"Precision:\t{precision}\n"
-                    f"Recall:\t\t{recall}"
+            all_slots_count = len(visitor_fully_annotated.all_type_slots)
+            all_available_slots_count = len(
+                visitor_fully_annotated.all_type_slots
+            ) - len(groundtruth_annotations)
+
+            extra_ml_annotations = {
+                k: v
+                for k, v in visitor_ml_annotated.all_type_slots.items()
+                if k not in groundtruth_annotations and v is not None
+            }
+            new_annotations_count = len(extra_ml_annotations)
+            try:
+                new_annotations_percentage = (
+                    new_annotations_count / all_available_slots_count * 100
                 )
-                print("-" * 15)
+            except ZeroDivisionError:
+                new_annotations_percentage = "-"
 
-            total = n_correct + n_incorrect
             results = [
                 os.path.join(relative_path, file),
                 n_correct,
                 n_incorrect,
-                total,
+                n_correct + n_incorrect,
+                all_available_slots_count,
                 precision,
                 recall,
+                new_annotations_count,
+                new_annotations_percentage,
+                all_slots_count,
             ]
             append_to_results_csv_file(results)
 
