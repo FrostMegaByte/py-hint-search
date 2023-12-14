@@ -67,7 +67,7 @@ def remove_pyright_config_file(project_path: str) -> None:
         os.remove(pyright_config_file)
 
 
-def create_type_annotated_source_code_file(
+def _create_type_annotated_source_code_file(
     source_code_tree, typed_path, relative_path, file_name
 ) -> None:
     output_typed_directory = os.path.abspath(
@@ -80,6 +80,10 @@ def create_type_annotated_source_code_file(
 
 
 def create_stub_file(source_code_tree, typed_path, relative_path, file_name) -> None:
+    _create_type_annotated_source_code_file(
+        source_code_tree, typed_path, relative_path, file_name
+    )
+
     # Create type stub for the type annotated source code tree
     transformer = StubTransformer()
     type_annotated_stub_tree = source_code_tree.visit(transformer)
@@ -152,11 +156,13 @@ def main(args: argparse.Namespace) -> None:
                     with open(stub_file, "r", encoding="utf-8") as f:
                         stub_code = f.read()
                     stub_tree = cst.parse_module(stub_code)
-                    visitor = PyrightTypeAnnotationCollector()
-                    stub_tree.visit(visitor)
+                    pyright_visitor = PyrightTypeAnnotationCollector()
+                    stub_tree.visit(pyright_visitor)
 
                     all_unknown_annotations = set()
-                    for pyright_type_annotation in visitor.all_pyright_annotations:
+                    for (
+                        pyright_type_annotation
+                    ) in pyright_visitor.all_pyright_annotations:
                         # Handle imports of pyright type annotations
                         (
                             tree_with_import,
@@ -173,10 +179,10 @@ def main(args: argparse.Namespace) -> None:
                             all_unknown_annotations |= unknown_annotations
                             continue
 
-                    transformer = PyrightTypeAnnotationTransformer(
-                        visitor.annotations, all_unknown_annotations
+                    pyright_transformer = PyrightTypeAnnotationTransformer(
+                        pyright_visitor.annotations, all_unknown_annotations
                     )
-                    source_code_tree = source_code_tree.visit(transformer)
+                    source_code_tree = source_code_tree.visit(pyright_transformer)
                     editor.change_file(source_code_tree.code, None)
                     editor.has_diagnostic_error(at_start=True)
                     added_extra_pyright_annotations = True
@@ -194,7 +200,7 @@ def main(args: argparse.Namespace) -> None:
             source_code_tree = source_code_tree.visit(incomplete_transformer)
 
             binary_ops_transformer = BinaryTransformer()
-            source_code_tree = source_code_tree.visit(binary_ops_transformer)            
+            source_code_tree = source_code_tree.visit(binary_ops_transformer)
 
             # Get ML type annotation predictions
             try:
@@ -206,18 +212,18 @@ def main(args: argparse.Namespace) -> None:
                 logger.warning(f"'{file}' cannot be parsed by Type4Py. Skipping...")
                 editor.close_file()
                 continue
-            
+
             # Get already type annotated parameters and return types
-            visitor = AlreadyTypeAnnotatedCollector()
-            source_code_tree.visit(visitor)
+            pyright_visitor = AlreadyTypeAnnotatedCollector()
+            source_code_tree.visit(pyright_visitor)
 
             # Transform the predictions and filter out already type annotated parameters and return types
             search_tree_layers = transform_predictions_to_array_to_process(
-                ml_predictions, visitor.already_type_annotated
+                ml_predictions, pyright_visitor.already_type_annotated
             )
 
-            number_of_type_slots = len(search_tree_layers)
-            if number_of_type_slots == 0:
+            number_of_type_slots_to_fill = len(search_tree_layers)
+            if number_of_type_slots_to_fill == 0:
                 if added_extra_pyright_annotations:
                     create_stub_file(source_code_tree, typed_path, relative_path, file)
                     print(
@@ -235,7 +241,7 @@ def main(args: argparse.Namespace) -> None:
                     logger.info(f"'{file}' has no type slots to fill. Skipping...")
                     editor.close_file()
                     continue
-            if number_of_type_slots >= 100:
+            if number_of_type_slots_to_fill >= 100:
                 print(f"{Fore.RED}'{file}' contains too many type slots. Skipping...\n")
                 logger.warning(f"'{file}' contains too many type slots. Skipping...")
                 editor.close_file()
@@ -249,13 +255,10 @@ def main(args: argparse.Namespace) -> None:
                 search_tree,
                 source_code_tree,
                 editor,
-                number_of_type_slots,
+                number_of_type_slots_to_fill,
                 ALL_PROJECT_CLASSES,
             )
 
-            create_type_annotated_source_code_file(
-                type_annotated_source_code_tree, typed_path, relative_path, file
-            )
             create_stub_file(
                 type_annotated_source_code_tree, typed_path, relative_path, file
             )
@@ -264,9 +267,11 @@ def main(args: argparse.Namespace) -> None:
             finish_time = time.time() - start_time
             evaluation_logger.info(f"Results of {os.path.join(relative_path, file)}:")
             evaluation_logger.info(f"Total time taken:\t\t{finish_time}")
-            evaluation_logger.info(f"# Predicted type slots:\t{number_of_type_slots}")
             evaluation_logger.info(
-                f"Time per slot:\t\t\t{finish_time/number_of_type_slots}"
+                f"# Predicted type slots:\t{number_of_type_slots_to_fill}"
+            )
+            evaluation_logger.info(
+                f"Time per slot:\t\t\t{finish_time/number_of_type_slots_to_fill}"
             )
             evaluation_logger.info(f"=" * 15)
             print()
