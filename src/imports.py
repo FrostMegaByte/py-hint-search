@@ -46,9 +46,10 @@ def get_classes_from_file(file_path: str) -> Dict[str, str]:
     return class_dict
 
 
-def get_all_classes_in_project(project_path: str, venv_path: str) -> Dict[str, str]:
+def get_all_classes_in_project(
+    project_path: str, venv_path: str | None
+) -> Dict[str, str]:
     if venv_path is not None:
-        venv_path = os.path.normpath(venv_path)
         venv_directory = venv_path.split(os.sep)[-1]
 
     classes = {}

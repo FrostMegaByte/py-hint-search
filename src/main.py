@@ -1,3 +1,4 @@
+import json
 import os
 import argparse
 import time
@@ -36,10 +37,11 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     def dir_path(string: str) -> str:
-        if os.path.isdir(string):
-            return string
+        normalized_path = os.path.normpath(string)
+        if os.path.isdir(normalized_path):
+            return normalized_path
         else:
-            raise NotADirectoryError(string)
+            raise NotADirectoryError(normalized_path)
 
     parser.add_argument(
         "--project-path",
@@ -52,7 +54,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--venv-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/redis-correct/.venv",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/redis-correct/.venv",
         help="The path to the virtual environment.",
         # required=True,
     )
@@ -67,9 +69,14 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def create_pyright_config_file(project_path: str) -> None:
+def create_pyright_config_file(project_path: str, venv_path: str | None) -> None:
+    config = {"typeCheckingMode": "strict"}
+
+    if venv_path is not None:
+        config["venvPath"] = venv_path
+
     with open(os.path.join(project_path, "pyrightconfig.json"), "w") as f:
-        f.write('{ "typeCheckingMode": "strict"}')
+        json.dump(config, f)
 
 
 def remove_pyright_config_file(project_path: str) -> None:
@@ -121,11 +128,12 @@ def main(args: argparse.Namespace) -> None:
     typed_directory = "type-annotated"
     typed_path = os.path.abspath(os.path.join(working_directory, typed_directory))
 
+    print("Gathering all local classes in the project...")
     ALL_PROJECT_CLASSES = get_all_classes_in_project(args.project_path, args.venv_path)
     if args.venv_path is not None:
-        venv_path = os.path.normpath(args.venv_path)
-        venv_directory = venv_path.split(os.sep)[-1]
-        ALL_VENV_CLASSES = get_all_classes_in_virtual_environment(venv_path)
+        venv_directory = args.venv_path.split(os.sep)[-1]
+        print("Gathering all classes in the virtual environment...")
+        ALL_VENV_CLASSES = get_all_classes_in_virtual_environment(args.venv_path)
         ALL_PROJECT_CLASSES = ALL_VENV_CLASSES | ALL_PROJECT_CLASSES
 
     editor.start(root_uri, workspace_folders)
@@ -308,7 +316,7 @@ if __name__ == "__main__":
     args = parse_arguments()
     os.chdir(os.path.abspath(os.path.join(args.project_path, "..")))
 
-    create_pyright_config_file(args.project_path)
+    create_pyright_config_file(args.project_path, args.venv_path)
     logger = create_main_logger()
     evaluation_logger = create_evaluation_logger()
     main(args)
