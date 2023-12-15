@@ -2,10 +2,10 @@ import os
 import ast
 import logging
 import re
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Union
 import typing
 import libcst as cst
-import libcst.matchers as m
+
 
 BUILT_IN_TYPES = {
     "bool",
@@ -15,14 +15,16 @@ BUILT_IN_TYPES = {
     "str",
     "list",
     "tuple",
+    "dict",
+    "set",
+    "frozenset",
     "range",
     "bytes",
     "bytearray",
     "memoryview",
-    "dict",
-    "set",
-    "frozenset",
     "None",
+    "object",
+    "type",
     "",
 }
 
@@ -45,9 +47,11 @@ def get_classes_from_file(file_path: str) -> Dict[str, str]:
 
 
 def get_all_classes_in_project(project_path: str, venv_path: str) -> Dict[str, str]:
+    if venv_path is not None:
+        venv_path = os.path.normpath(venv_path)
+        venv_directory = venv_path.split(os.sep)[-1]
+
     classes = {}
-    venv_path = os.path.normpath(venv_path)
-    venv_directory = venv_path.split(os.sep)[-1]
     for root, dirs, files in os.walk(project_path):
         # Ignore the virtual environment directory
         if venv_path and venv_directory in dirs:
@@ -76,20 +80,17 @@ def get_all_classes_in_virtual_environment(venv_path: str) -> Dict[str, str]:
     return classes
 
 
-def get_import_module_path(
+def _get_import_module_path(
     project_classes: Dict[str, str], annotation: str, current_file: str
-) -> Optional[str]:
-    if annotation in project_classes:
-        relative_path = os.path.relpath(
-            project_classes[annotation],
-            current_file,
-        )
-        path_list = relative_path.removesuffix(".py").split("\\")
-        path_list = [x for x in path_list if x != ".."]
-        module_path = ".".join(path_list)
-        return module_path
-    else:
-        return None
+) -> str:
+    relative_path = os.path.relpath(
+        project_classes[annotation],
+        current_file,
+    )
+    path_list = relative_path.removesuffix(".py").split("\\")
+    path_list = [x for x in path_list if x != ".."]
+    module_path = ".".join(path_list)
+    return module_path
 
 
 def add_import_to_searchtree(
@@ -104,54 +105,81 @@ def add_import_to_searchtree(
         else [type_annotation]
     )
 
-    is_unknown_annotation = False
+    # Handle "|" edge case
+    potential_annotation_imports = [
+        item.strip() for imp in potential_annotation_imports for item in imp.split("|")
+    ]
+
+    # Handle "Literal" edge case
+    if "Literal" in potential_annotation_imports:
+        literal_index = potential_annotation_imports.index("Literal")
+        if literal_index + 1 < len(potential_annotation_imports):
+            del potential_annotation_imports[literal_index + 1]
+
+    unknown_annotations = set()
     for annotation in potential_annotation_imports:
         if annotation in BUILT_IN_TYPES:
             continue
-        elif annotation in typing.__all__:
+        elif annotation == "Incomplete":
+            continue
+        elif annotation == "Unknown":
+            # Check if Unknown would otherwise be classified as unknown_annotations if this condition was not added
+            continue
+        elif annotation in typing.__all__ or annotation in ["LiteralString"]:
             transformer = ImportInserter(f"from typing import {annotation}")
             source_code_tree = source_code_tree.visit(transformer)
+        elif "." in annotation:
+            if annotation == "...":
+                continue
+            module, annotation = annotation.rsplit(".", 1)
+            transformer = ImportInserter(f"from {module} import {annotation}")
+            source_code_tree = source_code_tree.visit(transformer)
         elif annotation in all_project_classes:
-            import_module_path = get_import_module_path(
+            import_module_path = _get_import_module_path(
                 all_project_classes, annotation, file_path
             )
 
-            if import_module_path is None:
-                is_unknown_annotation = True
-                break
+            if import_module_path == ".":
+                continue
 
             transformer = ImportInserter(
                 f"from {import_module_path} import {annotation}"
             )
             source_code_tree = source_code_tree.visit(transformer)
         else:
-            is_unknown_annotation = True
-            break
-    return source_code_tree, is_unknown_annotation
+            unknown_annotations.add(annotation)
+            continue
+    return source_code_tree, unknown_annotations
 
 
 class ImportInserter(cst.CSTTransformer):
     def __init__(self, import_statement: str):
         self.import_statement = import_statement
+        self.imports: List[Union[cst.Import, cst.ImportFrom]] = []
+
+    def visit_Import(self, node: cst.Import) -> cst.Import:
+        self.imports.append(node)
+
+    def visit_ImportFrom(self, node: cst.ImportFrom) -> cst.ImportFrom:
+        self.imports.append(node)
 
     def leave_Module(
         self, original_node: cst.Module, updated_node: cst.Module
     ) -> cst.Module:
         imp = cst.parse_statement(self.import_statement)
-        # import2 = cst.parse_statement("from taart import Taart")
-
-        # # Check if the two import statements match
-        # if m.matches(imp, import2):
-        #     print("The import statements are the same")
-        # else:
-        #     print("The import statements are different")
-
-        # import_is_present = bool(
-        #     [True for i in updated_node.children if m.matches(i, imp)]
-        # )
-        # if not import_is_present:
-        body_with_import = (imp,) + updated_node.body
-        return updated_node.with_changes(body=body_with_import)
+        existing_import_items = set(
+            [
+                n.evaluated_name
+                for i in self.imports
+                if not isinstance(i.names, cst.ImportStar)
+                for n in i.names
+            ]
+        )
+        import_item = imp.body[0].names[0].evaluated_name
+        if import_item not in existing_import_items:
+            body_with_import = (imp,) + updated_node.body
+            return updated_node.with_changes(body=body_with_import)
+        return updated_node
 
 
 # get_all_classes_in_project(

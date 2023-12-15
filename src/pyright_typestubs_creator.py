@@ -10,7 +10,6 @@ def create_pyright_typestubs(project_path: str) -> None:
 
     python_subdirectories = get_subdirectories(project_path)
     python_subdirectories.reverse()
-    print(working_directory)
 
     for subdirectory in python_subdirectories:
         subdirectory_path = os.path.join(working_directory, subdirectory)
@@ -66,9 +65,9 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
+        default="D:/Documents/test/fully-annotated",
         help="The path to the project which will be type annotated.",
-        required=True,
+        # required=True,
     )
 
     return parser.parse_args()

@@ -14,6 +14,9 @@ from lsprotocol.types import (
     DidOpenTextDocumentParams,
     DidChangeTextDocumentParams,
     VersionedTextDocumentIdentifier,
+    TextDocumentContentChangeEvent_Type1,
+    Range,
+    Position,
     TextDocumentContentChangeEvent_Type2,
     InitializeParams,
     ClientCapabilities,
@@ -30,6 +33,8 @@ class FakeEditor:
         self.lsp_client = self._get_LSP_client()
         self.capabilities = self._get_editor_capabilities()
         self.received_diagnostics = False
+        self.modified_location = None
+        self.start_errors = set()
         self.diagnostics = []
 
     # Singleton class
@@ -121,7 +126,8 @@ class FakeEditor:
         )
         self._wait_for_diagnostics()
 
-    def change_file(self, new_python_code: str) -> None:
+    def change_file(self, new_python_code: str, modified_location) -> None:
+        self.modified_location = modified_location
         self.edit_document.version += 1
         document = VersionedTextDocumentIdentifier(
             uri=self.edit_document.uri,
@@ -136,12 +142,36 @@ class FakeEditor:
         )
         self._wait_for_diagnostics()
 
-    def has_diagnostic_error(self) -> bool:
-        DIAGNOSTIC_ERROR_PATTERN = r"cannot be assigned to|is not defined|Operator \".*\" not supported for types \".*\" and \".*\""
-        # TODO: Check that the diagnostic error is only for that function where the annotation was changed
+    def _error_in_modified_location(self, range) -> bool:
+        return (
+            self.modified_location is not None
+            and range["start"]["line"] >= self.modified_location.start.line
+            and range["start"]["character"] >= self.modified_location.start.column
+            and range["end"]["line"] <= self.modified_location.end.line
+            and range["end"]["character"] <= self.modified_location.end.column
+        )
+
+    def has_diagnostic_error(self, at_start=False) -> bool:
+        ERROR_PATTERN = r'cannot be assigned to|is not defined|Operator ".*" not supported for types ".*" and ".*"'
+        ALLOWED_PATTERN = r'"Unknown" is not defined'
 
         for diagnostic in self.diagnostics:
-            if len(re.findall(DIAGNOSTIC_ERROR_PATTERN, diagnostic["message"])) > 0:
+            diagnostic_has_error = (
+                len(re.findall(ERROR_PATTERN, diagnostic["message"])) > 0
+            )
+            if diagnostic_has_error and at_start:
+                self.start_errors.add(diagnostic["message"])
+
+            if diagnostic_has_error and self._error_in_modified_location(
+                diagnostic["range"]
+            ):
+                diagnostic_is_allowed = (
+                    len(re.findall(ALLOWED_PATTERN, diagnostic["message"])) > 0
+                    or diagnostic["message"] in self.start_errors
+                )
+                if diagnostic_is_allowed:
+                    continue
+
                 return True
         return False
 
