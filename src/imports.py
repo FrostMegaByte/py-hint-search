@@ -84,14 +84,16 @@ BUILT_IN_TYPES = {
     "str",
     "list",
     "tuple",
+    "dict",
+    "set",
+    "frozenset",
     "range",
     "bytes",
     "bytearray",
     "memoryview",
-    "dict",
-    "set",
-    "frozenset",
     "None",
+    "object",
+    "type",
     "",
 } | EXCEPTIONS_AND_ERROS
 
@@ -113,9 +115,23 @@ def get_classes_from_file(file_path: str) -> Dict[str, str]:
     return class_dict
 
 
-def get_all_classes_in_project(project_path: str) -> Dict[str, str]:
+def get_all_classes_in_project(
+    project_path: str, venv_path: str | None
+) -> Dict[str, str]:
+    if venv_path is not None:
+        venv_directory = venv_path.split(os.sep)[-1]
+
     classes = {}
-    for root, _, files in os.walk(project_path):
+    for root, dirs, files in os.walk(project_path):
+        # Ignore the virtual environment directory
+        if venv_path and venv_directory in dirs:
+            dirs.remove(venv_directory)
+        else:
+            for venv_name in {"venv", ".venv", "env", ".env", "virtualenv"}:
+                if venv_name in dirs:
+                    dirs.remove(venv_name)
+                    break
+
         for file in files:
             if file.endswith(".py"):
                 file_path = os.path.join(root, file)
@@ -123,20 +139,28 @@ def get_all_classes_in_project(project_path: str) -> Dict[str, str]:
     return classes
 
 
-def get_import_module_path(
+def get_all_classes_in_virtual_environment(venv_path: str) -> Dict[str, str]:
+    classes = {}
+    packages_path = os.path.join(venv_path, "Lib", "site-packages")
+    for root, _, files in os.walk(packages_path):
+        for file in files:
+            if file.endswith(".py"):
+                file_path = os.path.join(root, file)
+                classes |= get_classes_from_file(file_path)
+    return classes
+
+
+def _get_import_module_path(
     project_classes: Dict[str, str], annotation: str, current_file: str
-) -> Optional[str]:
-    if annotation in project_classes:
-        relative_path = os.path.relpath(
-            project_classes[annotation],
-            current_file,
-        )
-        path_list = relative_path.removesuffix(".py").split("\\")
-        path_list = [x for x in path_list if x != ".."]
-        module_path = ".".join(path_list)
-        return module_path
-    else:
-        return None
+) -> str:
+    relative_path = os.path.relpath(
+        project_classes[annotation],
+        current_file,
+    )
+    path_list = relative_path.removesuffix(".py").split("\\")
+    path_list = [x for x in path_list if x != ".."]
+    module_path = ".".join(path_list)
+    return module_path
 
 
 def add_import_to_searchtree(
@@ -181,13 +205,12 @@ def add_import_to_searchtree(
             transformer = ImportInserter(f"from {module} import {annotation}")
             source_code_tree = source_code_tree.visit(transformer)
         elif annotation in all_project_classes:
-            import_module_path = get_import_module_path(
+            import_module_path = _get_import_module_path(
                 all_project_classes, annotation, file_path
             )
 
-            if import_module_path is None:
-                unknown_annotations.add(annotation)
-                break
+            if import_module_path == ".":
+                continue
 
             transformer = ImportInserter(
                 f"from {import_module_path} import {annotation}"
@@ -195,7 +218,7 @@ def add_import_to_searchtree(
             source_code_tree = source_code_tree.visit(transformer)
         else:
             unknown_annotations.add(annotation)
-            break
+            continue
     return source_code_tree, unknown_annotations
 
 
@@ -227,3 +250,11 @@ class ImportInserter(cst.CSTTransformer):
             body_with_import = (imp,) + updated_node.body
             return updated_node.with_changes(body=body_with_import)
         return updated_node
+
+
+# get_all_classes_in_project(
+#     "D:/Documents/test2/plagiarism-checker",
+# )
+# get_all_classes_in_virtual_environment(
+#     "D:/Documents/test2/plagiarism-checker/t/.venv",
+# )
