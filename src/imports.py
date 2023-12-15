@@ -6,6 +6,76 @@ from typing import Dict, List, Optional, Union
 import typing
 import libcst as cst
 
+EXCEPTIONS_AND_ERROS = {
+    "Exception",
+    "BaseException",
+    "GeneratorExit",
+    "KeyboardInterrupt",
+    "SystemExit",
+    "Exception",
+    "StopIteration",
+    "OSError",
+    "EnvironmentError",
+    "IOError",
+    "ArithmeticError",
+    "AssertionError",
+    "AttributeError",
+    "BufferError",
+    "EOFError",
+    "ImportError",
+    "LookupError",
+    "MemoryError",
+    "NameError",
+    "ReferenceError",
+    "RuntimeError",
+    "StopAsyncIteration",
+    "SyntaxError",
+    "SystemError",
+    "TypeError",
+    "ValueError",
+    "FloatingPointError",
+    "OverflowError",
+    "ZeroDivisionError",
+    "ModuleNotFoundError",
+    "IndexError",
+    "KeyError",
+    "UnboundLocalError",
+    "BlockingIOError",
+    "ChildProcessError",
+    "ConnectionError",
+    "BrokenPipeError",
+    "ConnectionAbortedError",
+    "ConnectionRefusedError",
+    "ConnectionResetError",
+    "FileExistsError",
+    "FileNotFoundError",
+    "InterruptedError",
+    "IsADirectoryError",
+    "NotADirectoryError",
+    "PermissionError",
+    "ProcessLookupError",
+    "TimeoutError",
+    "NotImplementedError",
+    "RecursionError",
+    "IndentationError",
+    "TabError",
+    "UnicodeError",
+    "UnicodeDecodeError",
+    "UnicodeEncodeError",
+    "UnicodeTranslateError",
+    "Warning",
+    "UserWarning",
+    "DeprecationWarning",
+    "SyntaxWarning",
+    "RuntimeWarning",
+    "FutureWarning",
+    "PendingDeprecationWarning",
+    "ImportWarning",
+    "UnicodeWarning",
+    "BytesWarning",
+    "ResourceWarning",
+}
+
 BUILT_IN_TYPES = {
     "bool",
     "int",
@@ -23,7 +93,7 @@ BUILT_IN_TYPES = {
     "frozenset",
     "None",
     "",
-}
+} | EXCEPTIONS_AND_ERROS
 
 
 def get_classes_from_file(file_path: str) -> Dict[str, str]:
@@ -101,7 +171,7 @@ def add_import_to_searchtree(
         elif annotation == "Unknown":
             # Check if Unknown would otherwise be classified as unknown_annotations if this condition was not added
             continue
-        elif annotation in typing.__all__ or annotation == "LiteralString":
+        elif annotation in typing.__all__ or annotation in ["LiteralString", "Self"]:
             transformer = ImportInserter(f"from typing import {annotation}")
             source_code_tree = source_code_tree.visit(transformer)
         elif "." in annotation:
