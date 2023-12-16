@@ -2,7 +2,7 @@ import os
 import ast
 import logging
 import re
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Set, Union
 import typing
 import libcst as cst
 
@@ -186,9 +186,14 @@ def add_import_to_searchtree(
         if literal_index + 1 < len(potential_annotation_imports):
             del potential_annotation_imports[literal_index + 1]
 
+    imports_collector = ImportsCollector()
+    source_code_tree.visit(imports_collector)
+
     unknown_annotations = set()
     for annotation in potential_annotation_imports:
         if annotation in BUILT_IN_TYPES:
+            continue
+        elif annotation in imports_collector.existing_import_items:
             continue
         elif annotation == "Incomplete":
             continue
@@ -222,22 +227,19 @@ def add_import_to_searchtree(
     return source_code_tree, unknown_annotations
 
 
-class ImportInserter(cst.CSTTransformer):
-    def __init__(self, import_statement: str):
-        self.import_statement = import_statement
+class ImportsCollector(cst.CSTVisitor):
+    def __init__(self):
         self.imports: List[Union[cst.Import, cst.ImportFrom]] = []
+        self.existing_import_items: Set[str] = set()
 
-    def visit_Import(self, node: cst.Import) -> cst.Import:
+    def visit_Import(self, node: cst.Import) -> Optional[bool]:
         self.imports.append(node)
 
-    def visit_ImportFrom(self, node: cst.ImportFrom) -> cst.ImportFrom:
+    def visit_ImportFrom(self, node: cst.ImportFrom) -> Optional[bool]:
         self.imports.append(node)
 
-    def leave_Module(
-        self, original_node: cst.Module, updated_node: cst.Module
-    ) -> cst.Module:
-        imp = cst.parse_statement(self.import_statement)
-        existing_import_items = set(
+    def leave_Module(self, node: cst.Module) -> None:
+        self.existing_import_items = set(
             [
                 n.evaluated_name
                 for i in self.imports
@@ -245,11 +247,18 @@ class ImportInserter(cst.CSTTransformer):
                 for n in i.names
             ]
         )
-        import_item = imp.body[0].names[0].evaluated_name
-        if import_item not in existing_import_items:
-            body_with_import = (imp,) + updated_node.body
-            return updated_node.with_changes(body=body_with_import)
-        return updated_node
+
+
+class ImportInserter(cst.CSTTransformer):
+    def __init__(self, import_statement: str):
+        self.import_statement = import_statement
+
+    def leave_Module(
+        self, original_node: cst.Module, updated_node: cst.Module
+    ) -> cst.Module:
+        imp = cst.parse_statement(self.import_statement)
+        body_with_import = (imp,) + updated_node.body
+        return updated_node.with_changes(body=body_with_import)
 
 
 # get_all_classes_in_project(
