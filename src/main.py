@@ -5,6 +5,12 @@ import time
 import libcst as cst
 import colorama
 from colorama import Fore
+from evaluation import (
+    append_to_evaluation_csv_file,
+    calculate_evaluation_statistics,
+    create_evaluation_csv_file,
+    gather_all_type_slots,
+)
 from stubs import StubTransformer
 
 from type4py_api import Type4PyException, get_ordered_type4py_predictions
@@ -137,6 +143,7 @@ def main(args: argparse.Namespace) -> None:
         ALL_PROJECT_CLASSES = ALL_VENV_CLASSES | ALL_PROJECT_CLASSES
 
     editor.start(root_uri, workspace_folders)
+    create_evaluation_csv_file()
 
     # Walk through project directories and type annotate all python files
     for root, dirs, files in os.walk(args.project_path):
@@ -154,7 +161,7 @@ def main(args: argparse.Namespace) -> None:
             relative_path = os.path.relpath(root, args.project_path)
             print(f"Processing file: {os.path.join(relative_path, file)}")
             logger.info(f"Processing file: {os.path.join(relative_path, file)}")
-            start_time = time.time()
+            start_time_total = time.perf_counter()
 
             type_annotated_file = os.path.abspath(
                 os.path.join(
@@ -178,6 +185,7 @@ def main(args: argparse.Namespace) -> None:
                 continue
 
             source_code_tree = cst.parse_module(python_code)
+            type_slots_groundtruth = gather_all_type_slots(source_code_tree)
 
             # Add type annotations inferred by Pyright
             added_extra_pyright_annotations = False
@@ -189,7 +197,9 @@ def main(args: argparse.Namespace) -> None:
                     with open(stub_file, "r", encoding="utf-8") as f:
                         stub_code = f.read()
                     stub_tree = cst.parse_module(stub_code)
-                    pyright_visitor = PyrightTypeAnnotationCollector()
+                    pyright_visitor = (
+                        PyrightTypeAnnotationCollector()
+                    )  # TODO: Might want to rewrite this collector and give it as parameter the type_slots_groundtruth to filter out those annotations
                     stub_tree.visit(pyright_visitor)
 
                     all_unknown_annotations = set()
@@ -216,6 +226,7 @@ def main(args: argparse.Namespace) -> None:
                         pyright_visitor.annotations, all_unknown_annotations
                     )
                     source_code_tree = source_code_tree.visit(pyright_transformer)
+                    type_slots_after_pyright = gather_all_type_slots(source_code_tree)
                     editor.change_file(source_code_tree.code, None)
                     editor.has_diagnostic_error(at_start=True)
                     added_extra_pyright_annotations = True
@@ -235,6 +246,8 @@ def main(args: argparse.Namespace) -> None:
             binary_ops_transformer = BinaryTransformer()
             source_code_tree = source_code_tree.visit(binary_ops_transformer)
 
+            start_time_ai_search = time.perf_counter()
+
             # Get ML type annotation predictions
             try:
                 ml_predictions = get_ordered_type4py_predictions(source_code_tree.code)
@@ -247,17 +260,31 @@ def main(args: argparse.Namespace) -> None:
                 continue
 
             # Get already type annotated parameters and return types
-            pyright_visitor = AlreadyTypeAnnotatedCollector()
-            source_code_tree.visit(pyright_visitor)
+            types_visitor = AlreadyTypeAnnotatedCollector()
+            source_code_tree.visit(types_visitor)
 
             # Transform the predictions and filter out already type annotated parameters and return types
             search_tree_layers = transform_predictions_to_array_to_process(
-                ml_predictions, pyright_visitor.already_type_annotated
+                ml_predictions, types_visitor.already_type_annotated
             )
 
             number_of_type_slots_to_fill = len(search_tree_layers)
             if number_of_type_slots_to_fill == 0:
                 if added_extra_pyright_annotations:
+                    # There was no AI search work to do, but we added extra Pyright annotations
+                    finish_time_ai_search = 0
+                    type_slots_after_ai = None
+                    finish_time_total = time.perf_counter() - start_time_total
+                    evaluation_statistics = calculate_evaluation_statistics(
+                        os.path.join(relative_path, file),
+                        type_slots_groundtruth,
+                        type_slots_after_pyright,
+                        type_slots_after_ai,
+                        number_of_type_slots_to_fill,
+                        finish_time_ai_search,
+                        finish_time_total,
+                    )
+
                     create_stub_file(source_code_tree, typed_path, relative_path, file)
                     print(
                         f"{Fore.GREEN}'{file}' completed with additional Pyright annotations!\n"
@@ -291,22 +318,26 @@ def main(args: argparse.Namespace) -> None:
                 number_of_type_slots_to_fill,
                 ALL_PROJECT_CLASSES,
             )
+            finish_time_ai_search = time.perf_counter() - start_time_ai_search
+            type_slots_after_ai = gather_all_type_slots(type_annotated_source_code_tree)
 
+            finish_time_total = time.perf_counter() - start_time_total
+            evaluation_statistics = calculate_evaluation_statistics(
+                os.path.join(relative_path, file),
+                type_slots_groundtruth,
+                type_slots_after_pyright if added_extra_pyright_annotations else None,
+                type_slots_after_ai,
+                number_of_type_slots_to_fill,
+                finish_time_ai_search,
+                finish_time_total,
+            )
+            append_to_evaluation_csv_file(list(evaluation_statistics.values()))
+
+            # TODO: move this above evaluation
             create_stub_file(
                 type_annotated_source_code_tree, typed_path, relative_path, file
             )
             editor.close_file()
-
-            finish_time = time.time() - start_time
-            evaluation_logger.info(f"Results of {os.path.join(relative_path, file)}:")
-            evaluation_logger.info(f"Total time taken:\t\t{finish_time}")
-            evaluation_logger.info(
-                f"# Predicted type slots:\t{number_of_type_slots_to_fill}"
-            )
-            evaluation_logger.info(
-                f"Time per slot:\t\t\t{finish_time/number_of_type_slots_to_fill}"
-            )
-            evaluation_logger.info(f"=" * 15)
             print()
 
     editor.stop()
