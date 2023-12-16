@@ -1,4 +1,4 @@
-from src.treebuilder import build_tree, Node
+from src.treebuilder import build_search_tree, Node
 
 
 def test_node_class():
@@ -9,7 +9,7 @@ def test_node_class():
     assert root_node.children == []
 
 
-def test_build_tree():
+def test_build_search_tree():
     TOP_K = 2
     arr = [
         [
@@ -23,7 +23,7 @@ def test_build_tree():
     ]
 
     root = Node("Top level node", 1)
-    tree = build_tree(root, arr)
+    tree = build_search_tree(root, arr)
 
     assert tree.typeAnnotation == "Top level node"
     assert tree.probability == 1

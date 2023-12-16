@@ -15,7 +15,7 @@ from stubs import StubTransformer
 
 from type4py_api import Type4PyException, get_ordered_type4py_predictions
 from annotations import (
-    AlreadyTypeAnnotatedCollector,
+    TypeSlotsVisitor,
     BinaryTransformer,
     PyrightTypeAnnotationCollector,
     PyrightTypeAnnotationTransformer,
@@ -29,8 +29,8 @@ from imports import (
 )
 from loggers import create_evaluation_logger, create_main_logger
 from searchtree import (
-    transform_predictions_to_array_to_process,
-    build_tree,
+    transform_predictions_to_slots_to_search,
+    build_search_tree,
     depth_first_traversal,
 )
 
@@ -259,13 +259,13 @@ def main(args: argparse.Namespace) -> None:
                 editor.close_file()
                 continue
 
-            # Get already type annotated parameters and return types
-            types_visitor = AlreadyTypeAnnotatedCollector()
-            source_code_tree.visit(types_visitor)
+            # Get available and already type annotated parameters and return types
+            visitor_type_slots = TypeSlotsVisitor()
+            source_code_tree.visit(visitor_type_slots)
 
             # Transform the predictions and filter out already type annotated parameters and return types
-            search_tree_layers = transform_predictions_to_array_to_process(
-                ml_predictions, types_visitor.already_type_annotated
+            search_tree_layers = transform_predictions_to_slots_to_search(
+                ml_predictions, visitor_type_slots.available_slots
             )
 
             number_of_type_slots_to_fill = len(search_tree_layers)
@@ -308,7 +308,7 @@ def main(args: argparse.Namespace) -> None:
                 continue
 
             # Build the search tree
-            search_tree = build_tree(search_tree_layers, args.top_k)
+            search_tree = build_search_tree(search_tree_layers, args.top_k)
 
             # Perform depth first traversal to annotate the source code tree (most work)
             type_annotated_source_code_tree = depth_first_traversal(

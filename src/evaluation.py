@@ -117,6 +117,8 @@ def calculate_evaluation_statistics(
     total_time,
 ):
     if type_slots_after_pyright is not None and type_slots_after_ai is not None:
+        # TODO: The Pyright step overwrites ground truth annotations, so there are too many extra annotations
+        # FIXME: These extra annotation dictionaries are thus not correct
         extra_pyright_annotations = calculate_extra_annotations(
             type_slots_groundtruth, type_slots_after_pyright
         )

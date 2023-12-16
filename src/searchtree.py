@@ -3,7 +3,6 @@ import re
 import time
 from typing import Any, Dict, List, Tuple, Union
 import libcst as cst
-from libcst.metadata import PositionProvider
 from colorama import Fore
 
 from annotations import (
@@ -16,58 +15,48 @@ from imports import add_import_to_searchtree
 TypeSlotPredictions = List[List[Union[str, float]]]
 
 
-def transform_predictions_to_array_to_process(
+def transform_predictions_to_slots_to_search(
     func_predictions: List[Dict[str, Any]],
-    type_annotated: Dict[Tuple[str, ...], List[str]],
-) -> List[TypeSlotPredictions]:
-    array_to_process = []
+    available_slots: List[Tuple[str, ...]],
+) -> Dict[Tuple[str, ...], TypeSlotPredictions]:
+    slots_to_search = {}
     for func in func_predictions:
         func_name = func["q_name"].split(".")
         if "<locals>" in func_name:
             func_name = [x for x in func_name if x != "<locals>"]
-        func_name = tuple(func_name)
-
-        if func_name not in type_annotated:
-            continue
 
         # First try parameters
         for param_name, param_predictions in func["params_p"].items():
-            if (
-                param_name in {"self", "args", "kwargs"}
-                or param_name in type_annotated[func_name]
-            ):
+            type_slot = tuple(func_name + [param_name])
+            if type_slot not in available_slots:
                 continue
 
-            # Dirty trick of adding function name and parameter name information to the predictions
-            param_predictions.insert(0, [func_name, param_name])
-            array_to_process.append(param_predictions)
+            slots_to_search[type_slot] = param_predictions
 
         # Then try return type
-        # Continuation of dirty trick of adding function name and parameter name information to the predictions
-        if "return" in type_annotated[func_name]:
+        type_slot = tuple(func_name + ["return"])
+        if type_slot not in available_slots:
             continue
 
         if "ret_type_p" in func:
-            func["ret_type_p"].insert(0, [func_name, "return"])
-            array_to_process.append(func["ret_type_p"])
+            slots_to_search[type_slot] = func["ret_type_p"]
         else:
-            array_to_process.append([[func_name, "return"], ["None", 1.0]])
+            slots_to_search[type_slot] = [["None", 1.0]]
 
-    return array_to_process
+    return slots_to_search
 
 
-def build_tree(
-    search_tree_layers: List[TypeSlotPredictions], top_k: int
+def build_search_tree(
+    search_tree_layers: Dict[Tuple[str, ...], TypeSlotPredictions], top_k: int
 ) -> Dict[str, Dict[str, Any]]:
     search_tree = {}
-    for layer_index in range(len(search_tree_layers)):
-        func_name, param_name = search_tree_layers[layer_index].pop(0)
+    for layer_index, (slot, preds) in enumerate(search_tree_layers.items()):
+        func_name, param_name = slot[:-1], slot[-1]
         search_tree[f"layer_{layer_index}"] = {
             "func_name": func_name,
             "param_name": param_name,
-            "predictions": search_tree_layers[layer_index][:top_k] + [["", 0]],
+            "predictions": preds[:top_k] + [["", 0]],
         }
-
     return search_tree
 
 

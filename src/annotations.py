@@ -148,10 +148,11 @@ class BinaryTransformer(cst.CSTTransformer):
         return updated_node
 
 
-class AlreadyTypeAnnotatedCollector(cst.CSTVisitor):
+class TypeSlotsVisitor(cst.CSTVisitor):
     def __init__(self) -> None:
         self.stack: List[Tuple[str, ...]] = []
-        self.already_type_annotated: Dict[Tuple[str, ...], List[str]] = {}
+        self.already_annotated_slots: List[Tuple[str, ...]] = []
+        self.available_slots: List[Tuple[str, ...]] = []
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
         self.stack.append(node.name.value)
@@ -162,13 +163,22 @@ class AlreadyTypeAnnotatedCollector(cst.CSTVisitor):
 
     def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
         self.stack.append(node.name.value)
-        self.already_type_annotated[tuple(self.stack)] = []
         for param in node.params.params:
+            if param.name.value == "self":
+                continue
+            self.stack.append(param.name.value)
             if param.annotation is not None:
-                self.already_type_annotated[tuple(self.stack)].append(param.name.value)
+                self.already_annotated_slots.append(tuple(self.stack))
+            else:
+                self.available_slots.append(tuple(self.stack))
+            self.stack.pop()
 
+        self.stack.append("return")
         if node.returns is not None:
-            self.already_type_annotated[tuple(self.stack)].append("return")
+            self.already_annotated_slots.append(tuple(self.stack))
+        else:
+            self.available_slots.append(tuple(self.stack))
+        self.stack.pop()
         return True
 
     def leave_FunctionDef(self, node: cst.FunctionDef) -> None:
