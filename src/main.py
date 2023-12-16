@@ -5,33 +5,33 @@ import time
 import libcst as cst
 import colorama
 from colorama import Fore
-from evaluation import (
-    append_to_evaluation_csv_file,
-    calculate_evaluation_statistics,
-    create_evaluation_csv_file,
-    gather_all_type_slots,
-)
-from stubs import StubTransformer
 
-from type4py_api import Type4PyException, get_ordered_type4py_predictions
-from annotations import (
-    TypeSlotsVisitor,
-    BinaryTransformer,
-    PyrightTypeAnnotationCollector,
-    PyrightTypeAnnotationTransformer,
-    RemoveIncompleteAnnotations,
-)
+from loggers import create_evaluation_logger, create_main_logger
 from fake_editor import FakeEditor
 from imports import (
     add_import_to_searchtree,
     get_all_classes_in_project,
     get_all_classes_in_virtual_environment,
 )
-from loggers import create_evaluation_logger, create_main_logger
+from type4py_api import Type4PyException, get_ordered_type4py_predictions
+from annotations import (
+    PyrightTypeAnnotationCollector,
+    PyrightTypeAnnotationTransformer,
+    RemoveIncompleteAnnotations,
+    BinaryTransformer,
+    TypeSlotsVisitor,
+)
 from searchtree import (
     transform_predictions_to_slots_to_search,
     build_search_tree,
     depth_first_traversal,
+)
+from stubs import StubTransformer
+from evaluation import (
+    append_to_evaluation_csv_file,
+    calculate_evaluation_statistics,
+    create_evaluation_csv_file,
+    gather_all_type_slots,
 )
 
 colorama.init(autoreset=True)
@@ -197,15 +197,15 @@ def main(args: argparse.Namespace) -> None:
                     with open(stub_file, "r", encoding="utf-8") as f:
                         stub_code = f.read()
                     stub_tree = cst.parse_module(stub_code)
-                    pyright_visitor = (
+                    visitor_pyright = (
                         PyrightTypeAnnotationCollector()
                     )  # TODO: Might want to rewrite this collector and give it as parameter the type_slots_groundtruth to filter out those annotations
-                    stub_tree.visit(pyright_visitor)
+                    stub_tree.visit(visitor_pyright)
 
                     all_unknown_annotations = set()
                     for (
                         pyright_type_annotation
-                    ) in pyright_visitor.all_pyright_annotations:
+                    ) in visitor_pyright.all_pyright_annotations:
                         # Handle imports of pyright type annotations
                         (
                             tree_with_import,
@@ -222,10 +222,10 @@ def main(args: argparse.Namespace) -> None:
                             all_unknown_annotations |= unknown_annotations
                             continue
 
-                    pyright_transformer = PyrightTypeAnnotationTransformer(
-                        pyright_visitor.annotations, all_unknown_annotations
+                    transformer_pyright = PyrightTypeAnnotationTransformer(
+                        visitor_pyright.annotations, all_unknown_annotations
                     )
-                    source_code_tree = source_code_tree.visit(pyright_transformer)
+                    source_code_tree = source_code_tree.visit(transformer_pyright)
                     type_slots_after_pyright = gather_all_type_slots(source_code_tree)
                     editor.change_file(source_code_tree.code, None)
                     editor.has_diagnostic_error(at_start=True)
@@ -240,11 +240,11 @@ def main(args: argparse.Namespace) -> None:
                         + "Recommended: Run command to recreate Pyright stubs"
                     )
 
-            incomplete_transformer = RemoveIncompleteAnnotations()
-            source_code_tree = source_code_tree.visit(incomplete_transformer)
+            transformer_incomplete = RemoveIncompleteAnnotations()
+            source_code_tree = source_code_tree.visit(transformer_incomplete)
 
-            binary_ops_transformer = BinaryTransformer()
-            source_code_tree = source_code_tree.visit(binary_ops_transformer)
+            transformer_binary_ops = BinaryTransformer()
+            source_code_tree = source_code_tree.visit(transformer_binary_ops)
 
             start_time_ai_search = time.perf_counter()
 

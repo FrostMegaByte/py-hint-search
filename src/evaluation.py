@@ -51,11 +51,11 @@ INCOMPLETE_TYPE_ANNOTATIONS = {
 
 
 def gather_all_type_slots(source_code_tree: cst.Module):
-    collector = TypeAnnotationsCollector()
-    source_code_tree.visit(collector)
+    visitor = TypeAnnotationsCollector()
+    source_code_tree.visit(visitor)
     all_type_slots = {
         k: v if v not in INCOMPLETE_TYPE_ANNOTATIONS else None
-        for k, v in collector.all_type_slots.items()
+        for k, v in visitor.all_type_slots.items()
     }
     return all_type_slots
 

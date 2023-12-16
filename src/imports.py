@@ -186,14 +186,14 @@ def add_import_to_searchtree(
         if literal_index + 1 < len(potential_annotation_imports):
             del potential_annotation_imports[literal_index + 1]
 
-    imports_collector = ImportsCollector()
-    source_code_tree.visit(imports_collector)
+    visitor = ImportsCollector()
+    source_code_tree.visit(visitor)
 
     unknown_annotations = set()
     for annotation in potential_annotation_imports:
         if annotation in BUILT_IN_TYPES:
             continue
-        elif annotation in imports_collector.existing_import_items:
+        elif annotation in visitor.existing_import_items:
             continue
         elif annotation == "Incomplete":
             continue
