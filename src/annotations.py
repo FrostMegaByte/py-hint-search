@@ -5,6 +5,14 @@ import libcst.matchers as m
 from libcst.metadata import PositionProvider
 
 
+def node_to_code(node: cst.CSTNode):
+    node_string = cst.Module([]).code_for_node(node)
+    node_string = node_string.replace("\n", "")
+    node_string = re.sub(r"\[\s+", "[", node_string)
+    node_string = re.sub(r"\s+\]", "]", node_string)
+    return node_string
+
+
 class ParameterTypeAnnotationInserter(cst.CSTTransformer):
     METADATA_DEPENDENCIES = (PositionProvider,)
 
@@ -122,69 +130,6 @@ def insert_return_annotation(
     return modified_tree, transformer.updated_function_location
 
 
-class RemoveIncompleteAnnotations(cst.CSTTransformer):
-    def leave_Annotation(
-        self, original_node: cst.Annotation, updated_node: cst.Annotation
-    ) -> cst.Annotation:
-        annotation_string = node_to_code(updated_node.annotation)
-        if annotation_string in [
-            "Incomplete",
-            "Optional[Incomplete]",
-            "Incomplete | None",
-        ]:
-            return cst.RemoveFromParent()
-        return updated_node
-
-
-class BinaryTransformer(cst.CSTTransformer):
-    def leave_Annotation(
-        self, original_node: cst.Annotation, updated_node: cst.Annotation
-    ) -> cst.Annotation:
-        if isinstance(updated_node.annotation, cst.BinaryOperation):
-            union_annotation = transform_binary_operations_to_unions(
-                updated_node.annotation
-            )
-            return updated_node.with_changes(annotation=union_annotation)
-        return updated_node
-
-
-class TypeSlotsVisitor(cst.CSTVisitor):
-    def __init__(self) -> None:
-        self.stack: List[Tuple[str, ...]] = []
-        self.already_annotated_slots: List[Tuple[str, ...]] = []
-        self.available_slots: List[Tuple[str, ...]] = []
-
-    def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
-        self.stack.append(node.name.value)
-        return True
-
-    def leave_ClassDef(self, node: cst.ClassDef) -> None:
-        self.stack.pop()
-
-    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
-        self.stack.append(node.name.value)
-        for param in node.params.params:
-            if param.name.value == "self":
-                continue
-            self.stack.append(param.name.value)
-            if param.annotation is not None:
-                self.already_annotated_slots.append(tuple(self.stack))
-            else:
-                self.available_slots.append(tuple(self.stack))
-            self.stack.pop()
-
-        self.stack.append("return")
-        if node.returns is not None:
-            self.already_annotated_slots.append(tuple(self.stack))
-        else:
-            self.available_slots.append(tuple(self.stack))
-        self.stack.pop()
-        return True
-
-    def leave_FunctionDef(self, node: cst.FunctionDef) -> None:
-        self.stack.pop()
-
-
 class PyrightTypeAnnotationCollector(cst.CSTVisitor):
     def __init__(self) -> None:
         self.stack: List[Tuple[str, ...]] = []
@@ -238,44 +183,6 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
         self.stack.pop()
 
 
-class BinaryOperationToUnionTransformer(cst.CSTTransformer):
-    def leave_BinaryOperation(
-        self, original_node: cst.BinaryOperation, updated_node: cst.BinaryOperation
-    ) -> cst.Subscript:
-        if updated_node.left.value == "None":
-            return cst.Subscript(
-                value=cst.Name("Optional"),
-                slice=[cst.SubscriptElement(slice=cst.Index(value=updated_node.right))],
-            )
-        elif updated_node.right.value == "None":
-            return cst.Subscript(
-                value=cst.Name("Optional"),
-                slice=[cst.SubscriptElement(slice=cst.Index(value=updated_node.left))],
-            )
-        else:
-            return cst.Subscript(
-                value=cst.Name("Union"),
-                slice=[
-                    cst.SubscriptElement(slice=cst.Index(value=updated_node.left)),
-                    cst.SubscriptElement(slice=cst.Index(value=updated_node.right)),
-                ],
-            )
-
-
-def node_to_code(node: cst.CSTNode):
-    node_string = cst.Module([]).code_for_node(node)
-    node_string = node_string.replace("\n", "")
-    node_string = re.sub(r"\[\s+", "[", node_string)
-    node_string = re.sub(r"\s+\]", "]", node_string)
-    return node_string
-
-
-def transform_binary_operations_to_unions(node: cst.BinaryOperation):
-    transformer = BinaryOperationToUnionTransformer()
-    transformed_annotation = node.visit(transformer)
-    return transformed_annotation
-
-
 class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
     def __init__(self, annotations, unknown_annotations: Set[str]) -> None:
         self.stack: List[Tuple[str, ...]] = []
@@ -323,3 +230,89 @@ class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
                 returns=return_annotation,
             )
         return updated_node
+
+
+class RemoveIncompleteAnnotations(cst.CSTTransformer):
+    def leave_Annotation(
+        self, original_node: cst.Annotation, updated_node: cst.Annotation
+    ) -> cst.Annotation:
+        annotation_string = node_to_code(updated_node.annotation)
+        if annotation_string in [
+            "Incomplete",
+            "Optional[Incomplete]",
+            "Incomplete | None",
+        ]:
+            return cst.RemoveFromParent()
+        return updated_node
+
+
+class BinaryAnnotationTransformer(cst.CSTTransformer):
+    def leave_Annotation(
+        self, original_node: cst.Annotation, updated_node: cst.Annotation
+    ) -> cst.Annotation:
+        if m.matches(updated_node.annotation, m.BinaryOperation()):
+            transformer = BinaryOperationToUnionTransformer()
+            union_annotation = updated_node.annotation.visit(transformer)
+            return updated_node.with_changes(annotation=union_annotation)
+        return updated_node
+
+
+class BinaryOperationToUnionTransformer(cst.CSTTransformer):
+    def leave_BinaryOperation(
+        self, original_node: cst.BinaryOperation, updated_node: cst.BinaryOperation
+    ) -> cst.Subscript:
+        if updated_node.left.value == "None":
+            return cst.Subscript(
+                value=cst.Name("Optional"),
+                slice=[cst.SubscriptElement(slice=cst.Index(value=updated_node.right))],
+            )
+        elif updated_node.right.value == "None":
+            return cst.Subscript(
+                value=cst.Name("Optional"),
+                slice=[cst.SubscriptElement(slice=cst.Index(value=updated_node.left))],
+            )
+        else:
+            return cst.Subscript(
+                value=cst.Name("Union"),
+                slice=[
+                    cst.SubscriptElement(slice=cst.Index(value=updated_node.left)),
+                    cst.SubscriptElement(slice=cst.Index(value=updated_node.right)),
+                ],
+            )
+
+
+class TypeSlotsVisitor(cst.CSTVisitor):
+    def __init__(self) -> None:
+        self.stack: List[Tuple[str, ...]] = []
+        self.already_annotated_slots: List[Tuple[str, ...]] = []
+        self.available_slots: List[Tuple[str, ...]] = []
+
+    def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
+        self.stack.append(node.name.value)
+        return True
+
+    def leave_ClassDef(self, node: cst.ClassDef) -> None:
+        self.stack.pop()
+
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
+        self.stack.append(node.name.value)
+        for param in node.params.params:
+            if param.name.value == "self":
+                continue
+            self.stack.append(param.name.value)
+            if param.annotation is not None:
+                self.already_annotated_slots.append(tuple(self.stack))
+            else:
+                self.available_slots.append(tuple(self.stack))
+            self.stack.pop()
+
+        self.stack.append("return")
+        if node.returns is not None:
+            self.already_annotated_slots.append(tuple(self.stack))
+        else:
+            self.available_slots.append(tuple(self.stack))
+        self.stack.pop()
+        return True
+
+    def leave_FunctionDef(self, node: cst.FunctionDef) -> None:
+        self.stack.pop()

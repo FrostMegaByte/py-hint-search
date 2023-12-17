@@ -18,7 +18,7 @@ from annotations import (
     PyrightTypeAnnotationCollector,
     PyrightTypeAnnotationTransformer,
     RemoveIncompleteAnnotations,
-    BinaryTransformer,
+    BinaryAnnotationTransformer,
     TypeSlotsVisitor,
 )
 from searchtree import (
@@ -53,14 +53,14 @@ def parse_arguments() -> argparse.Namespace:
         "--project-path",
         type=dir_path,
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/fully-annotated",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/redis-correct/fully-annotated",
         help="The path to the project which will be type annotated.",
         # required=True,
     )
     parser.add_argument(
         "--venv-path",
         type=dir_path,
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/redis-correct/.venv",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/.venv",
         help="The path to the virtual environment.",
         # required=True,
     )
@@ -243,12 +243,11 @@ def main(args: argparse.Namespace) -> None:
             transformer_incomplete = RemoveIncompleteAnnotations()
             source_code_tree = source_code_tree.visit(transformer_incomplete)
 
-            transformer_binary_ops = BinaryTransformer()
+            transformer_binary_ops = BinaryAnnotationTransformer()
             source_code_tree = source_code_tree.visit(transformer_binary_ops)
 
-            start_time_ml_search = time.perf_counter()
-
             # Get ML type annotation predictions
+            start_time_ml_search = time.perf_counter()
             try:
                 ml_predictions = get_ordered_type4py_predictions(source_code_tree.code)
             except Type4PyException:
