@@ -155,6 +155,11 @@ def calculate_evaluation_statistics(
     except ZeroDivisionError:
         new_annotations_percentage = "-"
 
+    try:
+        avg_time_per_slot = round(ml_search_time / number_of_ml_evaluated_type_slots, 2)
+    except ZeroDivisionError:
+        avg_time_per_slot = "-"
+
     evaluation_statistics = {
         "file": file,
         "annotations_groundtruth_count": len(annotations_groundtruth),
@@ -174,9 +179,7 @@ def calculate_evaluation_statistics(
         else "-",
         "extra_annotations_percentage": new_annotations_percentage,
         "ml_evaluated_type_slots_count": number_of_ml_evaluated_type_slots,
-        "avg_time_per_slot": round(
-            ml_search_time / number_of_ml_evaluated_type_slots, 2
-        ),
+        "avg_time_per_slot": avg_time_per_slot,
         "ml_search_time": round(ml_search_time, 2),
         "total_time": round(total_time, 2),
     }
