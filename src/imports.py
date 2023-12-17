@@ -5,6 +5,7 @@ import re
 from typing import Dict, List, Optional, Set, Union
 import typing
 import libcst as cst
+import libcst.matchers as m
 
 EXCEPTIONS_AND_ERROS = {
     "Exception",
@@ -170,15 +171,11 @@ def add_import_to_searchtree(
     type_annotation: str,
 ):
     potential_annotation_imports = (
-        list(filter(None, re.split("\[|\]|,\s*", type_annotation)))
+        list(filter(None, re.split("\[|\]|,\s*|\s*\|\s*", type_annotation)))
         if "[" in type_annotation
         else [type_annotation]
     )
-
-    # Handle "|" edge case
-    potential_annotation_imports = [
-        item.strip() for imp in potential_annotation_imports for item in imp.split("|")
-    ]
+    potential_annotation_imports = list(dict.fromkeys(potential_annotation_imports))
 
     # Handle "Literal" edge case
     if "Literal" in potential_annotation_imports:
@@ -186,23 +183,34 @@ def add_import_to_searchtree(
         if literal_index + 1 < len(potential_annotation_imports):
             del potential_annotation_imports[literal_index + 1]
 
-    visitor = ImportsCollector()
-    source_code_tree.visit(visitor)
+    visitor_imports = ImportsCollector()
+    source_code_tree.visit(visitor_imports)
+
+    visitor_aliases = TypeAliasesCollector()
+    source_code_tree.visit(visitor_aliases)
 
     unknown_annotations = set()
     for annotation in potential_annotation_imports:
         if annotation in BUILT_IN_TYPES:
             continue
-        elif annotation in visitor.existing_import_items:
+        elif annotation in visitor_imports.existing_import_items:
             continue
-        elif annotation == "Incomplete":
-            continue
-        elif annotation == "Unknown":
-            # Check if Unknown would otherwise be classified as unknown_annotations if this condition was not added
+        elif annotation in visitor_aliases.existing_type_aliases:
             continue
         elif annotation in typing.__all__ or annotation in ["LiteralString", "Self"]:
             transformer = ImportInserter(f"from typing import {annotation}")
             source_code_tree = source_code_tree.visit(transformer)
+        elif annotation == "Unknown":
+            transformer_alias = TypeAliasInserter("Unknown: TypeAlias = Any")
+            source_code_tree = source_code_tree.visit(transformer_alias)
+            if "TypeAlias" not in visitor_imports.existing_import_items:
+                transformer_import_type_alias = ImportInserter(
+                    f"from typing_extensions import TypeAlias"
+                )
+                source_code_tree = source_code_tree.visit(transformer_import_type_alias)
+            if "Any" not in visitor_imports.existing_import_items:
+                transformer_import = ImportInserter(f"from typing import Any")
+                source_code_tree = source_code_tree.visit(transformer_import)
         elif "." in annotation:
             if annotation == "...":
                 continue
@@ -259,6 +267,31 @@ class ImportInserter(cst.CSTTransformer):
         imp = cst.parse_statement(self.import_statement)
         body_with_import = (imp,) + updated_node.body
         return updated_node.with_changes(body=body_with_import)
+
+
+class TypeAliasesCollector(cst.CSTVisitor):
+    def __init__(self):
+        self.type_aliases: List[cst.AnnAssign] = []
+        self.existing_type_aliases: Set[str] = set()
+
+    def visit_AnnAssign(self, node: cst.AnnAssign) -> None:
+        if m.matches(node.annotation, m.Annotation(annotation=m.Name("TypeAlias"))):
+            self.type_aliases.append(node)
+
+    def leave_Module(self, node: cst.Module) -> None:
+        self.existing_type_aliases = set([ta.target.value for ta in self.type_aliases])
+
+
+class TypeAliasInserter(cst.CSTTransformer):
+    def __init__(self, type_alias: str):
+        self.type_alias = type_alias
+
+    def leave_Module(
+        self, original_node: cst.Module, updated_node: cst.Module
+    ) -> cst.Module:
+        type_alias = cst.parse_statement(self.type_alias)
+        body_with_type_alias = (type_alias,) + updated_node.body
+        return updated_node.with_changes(body=body_with_type_alias)
 
 
 # get_all_classes_in_project(
