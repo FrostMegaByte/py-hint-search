@@ -170,10 +170,8 @@ def add_import_to_searchtree(
     source_code_tree: cst.Module,
     type_annotation: str,
 ):
-    potential_annotation_imports = (
-        list(filter(None, re.split("\[|\]|,\s*|\s*\|\s*", type_annotation)))
-        if "[" in type_annotation
-        else [type_annotation]
+    potential_annotation_imports = list(
+        filter(None, re.split("\[|\]|,\s*|\s*\|\s*", type_annotation))
     )
     potential_annotation_imports = list(dict.fromkeys(potential_annotation_imports))
 
