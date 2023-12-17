@@ -67,7 +67,7 @@ def calculate_extra_annotations(
     extra_annotations = {
         k: v
         for k, v in updated_type_annotations.items()
-        if (k, v) not in original_type_annotations.items()
+        if v is not None and (k, None) in original_type_annotations.items()
     }
     return extra_annotations
 
@@ -119,8 +119,6 @@ def calculate_evaluation_statistics(
     total_time,
 ):
     if type_slots_after_pyright is not None and type_slots_after_ml_search is not None:
-        # TODO: The Pyright step overwrites ground truth annotations, so there are too many extra annotations
-        # FIXME: These extra annotation dictionaries are thus not correct
         extra_pyright_annotations = calculate_extra_annotations(
             type_slots_groundtruth, type_slots_after_pyright
         )

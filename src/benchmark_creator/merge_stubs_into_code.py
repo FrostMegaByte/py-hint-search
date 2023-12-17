@@ -86,16 +86,18 @@ class TypingTransformer(cst.CSTTransformer):
             params_annotations, return_annotation = self.annotations[key]
             updated_params = list(updated_node.params.params)
             for i, param in enumerate(updated_node.params.params):
+                if param.name.value == "self":
+                    continue
                 if param.annotation is None:
                     for stub_param in params_annotations.params:
                         if m.matches(stub_param.name, param.name):
                             updated_params[i] = param.with_changes(
                                 annotation=stub_param.annotation
                             )
-
             updated_params = updated_node.params.with_changes(
                 params=tuple(updated_params)
             )
+
             return_annotation = (
                 return_annotation
                 if updated_node.returns is None

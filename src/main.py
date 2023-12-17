@@ -197,9 +197,7 @@ def main(args: argparse.Namespace) -> None:
                     with open(stub_file, "r", encoding="utf-8") as f:
                         stub_code = f.read()
                     stub_tree = cst.parse_module(stub_code)
-                    visitor_pyright = (
-                        PyrightTypeAnnotationCollector()
-                    )  # TODO: Might want to rewrite this collector and give it as parameter the type_slots_groundtruth to filter out those annotations
+                    visitor_pyright = PyrightTypeAnnotationCollector()
                     stub_tree.visit(visitor_pyright)
 
                     all_unknown_annotations = set()

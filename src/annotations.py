@@ -208,23 +208,34 @@ class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
     ) -> cst.FunctionDef:
-        key = tuple(self.stack)
+        # Keep the inline type hints (ground truth) and only add the missing ones from the Pyright stub files
+        func = tuple(self.stack)
         self.stack.pop()
-        if key in self.annotations:
-            annotations = self.annotations[key]
-            updated_params = list(annotations[0].params)
-
+        if func in self.annotations:
+            pyright_params, pyright_return = self.annotations[func]
+            updated_params = list(updated_node.params.params)
+            for i, param in enumerate(updated_node.params.params):
+                if param.name.value == "self":
+                    continue
+                if param.annotation is None:
+                    for pyright_param in pyright_params.params:
+                        if m.matches(pyright_param.name, param.name):
+                            updated_params[i] = param.with_changes(
+                                annotation=pyright_param.annotation
+                            )
             updated_params = updated_node.params.with_changes(
                 params=tuple(updated_params)
             )
 
-            return_annotation = (
-                annotations[1]
-                if annotations[1] is not None
-                and node_to_code(annotations[1].annotation)
-                not in self.unknown_annotations
-                else None
-            )
+            return_annotation = updated_node.returns
+            if return_annotation is None:
+                return_annotation = (
+                    pyright_return
+                    if pyright_return is not None
+                    and node_to_code(pyright_return.annotation)
+                    not in self.unknown_annotations
+                    else None
+                )
             return updated_node.with_changes(
                 params=updated_params,
                 returns=return_annotation,
