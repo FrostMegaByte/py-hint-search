@@ -111,42 +111,42 @@ def calculate_evaluation_statistics(
     file,
     type_slots_groundtruth,
     type_slots_after_pyright,
-    type_slots_after_ai,
-    number_of_ai_evaluated_type_slots,
-    ai_search_time,
+    type_slots_after_ml_search,
+    number_of_ml_evaluated_type_slots,
+    ml_search_time,
     total_time,
 ):
-    if type_slots_after_pyright is not None and type_slots_after_ai is not None:
+    if type_slots_after_pyright is not None and type_slots_after_ml_search is not None:
         # TODO: The Pyright step overwrites ground truth annotations, so there are too many extra annotations
         # FIXME: These extra annotation dictionaries are thus not correct
         extra_pyright_annotations = calculate_extra_annotations(
             type_slots_groundtruth, type_slots_after_pyright
         )
-        extra_ai_annotations = calculate_extra_annotations(
-            type_slots_after_pyright, type_slots_after_ai
+        extra_ml_annotations = calculate_extra_annotations(
+            type_slots_after_pyright, type_slots_after_ml_search
         )
     elif type_slots_after_pyright is not None:
         extra_pyright_annotations = calculate_extra_annotations(
             type_slots_groundtruth, type_slots_after_pyright
         )
-        extra_ai_annotations = {}
-    elif type_slots_after_ai is not None:
+        extra_ml_annotations = {}
+    elif type_slots_after_ml_search is not None:
         extra_pyright_annotations = {}
-        extra_ai_annotations = calculate_extra_annotations(
-            type_slots_groundtruth, type_slots_after_ai
+        extra_ml_annotations = calculate_extra_annotations(
+            type_slots_groundtruth, type_slots_after_ml_search
         )
     else:
         extra_pyright_annotations = {}
-        extra_ai_annotations = {}
+        extra_ml_annotations = {}
 
     annotations_groundtruth = gather_annotated_slots(type_slots_groundtruth)
     annotations_after_pyright = gather_annotated_slots(type_slots_after_pyright)
-    annotations_after_ai = gather_annotated_slots(type_slots_after_ai)
+    annotations_after_ml_search = gather_annotated_slots(type_slots_after_ml_search)
     available_slots = gather_available_slots(type_slots_groundtruth)
 
     try:
         new_annotations_percentage = (
-            (len(annotations_after_ai) - len(annotations_groundtruth))
+            (len(annotations_after_ml_search) - len(annotations_groundtruth))
             / len(available_slots)
             * 100
         )
@@ -156,22 +156,22 @@ def calculate_evaluation_statistics(
     evaluation_statistics = {
         "file": file,
         "annotations_groundtruth_count": len(annotations_groundtruth),
-        "annotations_after_Pyright_count": len(annotations_after_pyright),
-        "annotations_after_ML_count": len(annotations_after_ai),
+        "annotations_after_pyright_count": len(annotations_after_pyright),
+        "annotations_after_ml_search_count": len(annotations_after_ml_search),
         "available_type_slots_count": len(available_slots),
         "total_type_slots": len(type_slots_groundtruth),
-        "extra_Pyright_annotations": len(extra_pyright_annotations)
+        "extra_pyright_annotations": len(extra_pyright_annotations)
         if len(available_slots) > 0
         else "-",
-        "extra_ML_annotations": len(extra_ai_annotations)
+        "extra_ml_annotations": len(extra_ml_annotations)
         if len(available_slots) > 0
         else "-",
         "extra_annotations_percentage": new_annotations_percentage,
-        "ai_evaluated_type_slots_count": number_of_ai_evaluated_type_slots,
+        "ml_evaluated_type_slots_count": number_of_ml_evaluated_type_slots,
         "avg_time_per_slot": round(
-            ai_search_time / number_of_ai_evaluated_type_slots, 2
+            ml_search_time / number_of_ml_evaluated_type_slots, 2
         ),
-        "ai_search_time": round(ai_search_time, 2),
+        "ml_search_time": round(ml_search_time, 2),
         "total_time": round(total_time, 2),
     }
     return evaluation_statistics

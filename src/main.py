@@ -53,7 +53,7 @@ def parse_arguments() -> argparse.Namespace:
         "--project-path",
         type=dir_path,
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/redis-correct/fully-annotated",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/fully-annotated",
         help="The path to the project which will be type annotated.",
         # required=True,
     )
@@ -246,7 +246,7 @@ def main(args: argparse.Namespace) -> None:
             transformer_binary_ops = BinaryTransformer()
             source_code_tree = source_code_tree.visit(transformer_binary_ops)
 
-            start_time_ai_search = time.perf_counter()
+            start_time_ml_search = time.perf_counter()
 
             # Get ML type annotation predictions
             try:
@@ -271,17 +271,17 @@ def main(args: argparse.Namespace) -> None:
             number_of_type_slots_to_fill = len(search_tree_layers)
             if number_of_type_slots_to_fill == 0:
                 if added_extra_pyright_annotations:
-                    # There was no AI search work to do, but we added extra Pyright annotations
-                    finish_time_ai_search = 0
-                    type_slots_after_ai = None
+                    # There was no ML search work to do, but we added extra Pyright annotations
+                    finish_time_ml_search = 0
+                    type_slots_after_ml = None
                     finish_time_total = time.perf_counter() - start_time_total
                     evaluation_statistics = calculate_evaluation_statistics(
                         os.path.join(relative_path, file),
                         type_slots_groundtruth,
                         type_slots_after_pyright,
-                        type_slots_after_ai,
+                        type_slots_after_ml,
                         number_of_type_slots_to_fill,
-                        finish_time_ai_search,
+                        finish_time_ml_search,
                         finish_time_total,
                     )
 
@@ -318,17 +318,17 @@ def main(args: argparse.Namespace) -> None:
                 number_of_type_slots_to_fill,
                 ALL_PROJECT_CLASSES,
             )
-            finish_time_ai_search = time.perf_counter() - start_time_ai_search
-            type_slots_after_ai = gather_all_type_slots(type_annotated_source_code_tree)
+            finish_time_ml_search = time.perf_counter() - start_time_ml_search
+            type_slots_after_ml = gather_all_type_slots(type_annotated_source_code_tree)
 
             finish_time_total = time.perf_counter() - start_time_total
             evaluation_statistics = calculate_evaluation_statistics(
                 os.path.join(relative_path, file),
                 type_slots_groundtruth,
                 type_slots_after_pyright if added_extra_pyright_annotations else None,
-                type_slots_after_ai,
+                type_slots_after_ml,
                 number_of_type_slots_to_fill,
-                finish_time_ai_search,
+                finish_time_ml_search,
                 finish_time_total,
             )
             append_to_evaluation_csv_file(list(evaluation_statistics.values()))
