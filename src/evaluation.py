@@ -98,6 +98,8 @@ def create_evaluation_csv_file():
 
 
 def gather_annotated_slots(type_slots):
+    if type_slots is None:
+        return {}
     annotations = {k: v for k, v in type_slots.items() if v is not None}
     return annotations
 
@@ -156,8 +158,12 @@ def calculate_evaluation_statistics(
     evaluation_statistics = {
         "file": file,
         "annotations_groundtruth_count": len(annotations_groundtruth),
-        "annotations_after_pyright_count": len(annotations_after_pyright),
-        "annotations_after_ml_search_count": len(annotations_after_ml_search),
+        "annotations_after_pyright_count": len(annotations_after_pyright)
+        if len(annotations_after_pyright) > 0
+        else "-",
+        "annotations_after_ml_search_count": len(annotations_after_ml_search)
+        if len(annotations_after_ml_search) > 0
+        else "-",
         "available_type_slots_count": len(available_slots),
         "total_type_slots": len(type_slots_groundtruth),
         "extra_pyright_annotations": len(extra_pyright_annotations)
