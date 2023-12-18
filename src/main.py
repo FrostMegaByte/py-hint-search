@@ -52,8 +52,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/redis-correct/fully-annotated",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/redis-correct/fully-annotated",
         help="The path to the project which will be type annotated.",
         # required=True,
     )
@@ -123,9 +123,7 @@ def create_stub_file(source_code_tree, typed_path, relative_path, file_name) -> 
 def main(args: argparse.Namespace) -> None:
     editor = FakeEditor()
     working_directory = os.getcwd()
-
     root_uri = f"file:///{args.project_path}"
-    workspace_folders = [{"name": "type-annotation-searcher", "uri": root_uri}]
 
     stubs_directory = "typings"
     stubs_path = os.path.abspath(os.path.join(working_directory, stubs_directory))
@@ -142,7 +140,7 @@ def main(args: argparse.Namespace) -> None:
         ALL_VENV_CLASSES = get_all_classes_in_virtual_environment(args.venv_path)
         ALL_PROJECT_CLASSES = ALL_VENV_CLASSES | ALL_PROJECT_CLASSES
 
-    editor.start(root_uri, workspace_folders)
+    editor.start(root_uri)
     create_evaluation_csv_file()
 
     # Walk through project directories and type annotate all python files

@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "lsp-mark"
-version = "0.1.0"
+name = "py-hint-search"
+version = "0.2.0"
 description = ""
 authors = ["Mark Bekooy <mark.bekooy@gmail.com>"]
 readme = "README.md"
@@ -9,7 +9,7 @@ packages = [{include = "client", from = "src"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 libcst = "^1.0.1"
-pyright = "^1.1.339"
+pyright = "^1.1.341"
 pytest = "^7.4.2"
 requests = "^2.31.0"
 lsprotocol = "^2023.0.0b1"
