@@ -3,31 +3,13 @@ import logging
 import re
 import subprocess
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from client.json_rpc_endpoint import JsonRpcEndpoint
 from client.lsp_client import LspClient
 from client.lsp_endpoint import LspEndpoint
 
-from lsprotocol.types import (
-    WorkspaceClientCapabilities,
-    TextDocumentClientCapabilities,
-    WorkspaceEditClientCapabilities,
-    TextDocumentSyncClientCapabilities,
-    PublishDiagnosticsClientCapabilities,
-    DiagnosticClientCapabilities,
-    WorkspaceFolder,
-    TextDocumentItem,
-    DidOpenTextDocumentParams,
-    DidChangeTextDocumentParams,
-    VersionedTextDocumentIdentifier,
-    TextDocumentContentChangeEvent_Type2,
-    InitializeParams,
-    ClientCapabilities,
-    TextDocumentIdentifier,
-    DidCloseTextDocumentParams,
-    TraceValues,
-)
+from lsprotocol.types import *
 
 
 class FakeEditor:
@@ -64,11 +46,6 @@ class FakeEditor:
 
     def _get_editor_capabilities(self) -> ClientCapabilities:
         return ClientCapabilities(
-            workspace=WorkspaceClientCapabilities(
-                apply_edit=True,
-                workspace_edit=WorkspaceEditClientCapabilities(document_changes=True),
-                workspace_folders=True,
-            ),
             text_document=TextDocumentClientCapabilities(
                 synchronization=TextDocumentSyncClientCapabilities(
                     dynamic_registration=True
@@ -81,24 +58,6 @@ class FakeEditor:
                     related_document_support=True,
                 ),
             ),
-            # workspace={
-            #     "apply_edit": True,
-            #     "workspace_edit": {
-            #         "document_changes": True,
-            #     },
-            #     # DO NOT ENABLE BECAUSE PYRIGHT THEN WON'T SEND DIAGNOSTICS!!!
-            #     # "did_change_configuration": {"dynamic_registration": True},
-            #     # "configuration": True,  # Needed for workspace/configuration to work which allows pyright to send diagnostics
-            #     "workspace_folders": True,
-            # },
-            # text_document={
-            #     "synchronization": {"dynamic_registration": True},
-            #     "publish_diagnostics": {"related_information": True},
-            #     "diagnostic": {
-            #         "dynamic_registration": True,
-            #         "related_document_support": True,
-            #     },
-            # },
         )
 
     def _handle_diagnostics(self, jsonrpc_message: Dict[str, Any]) -> None:
