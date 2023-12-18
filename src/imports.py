@@ -252,14 +252,15 @@ class ImportsCollector(cst.CSTVisitor):
         self.imports.append(node)
 
     def leave_Module(self, node: cst.Module) -> None:
-        self.existing_import_items = set(
-            [
-                n.evaluated_name
-                for i in self.imports
-                if not isinstance(i.names, cst.ImportStar)
-                for n in i.names
-            ]
-        )
+        self.existing_import_items = set()
+        for i in self.imports:
+            if m.matches(i.names, m.ImportStar()):
+                continue
+            for n in i.names:
+                existing_import_item = n.evaluated_name
+                if n.evaluated_alias is not None:
+                    existing_import_item = n.evaluated_alias
+                self.existing_import_items.add(existing_import_item)
 
 
 class ImportInserter(cst.CSTTransformer):
