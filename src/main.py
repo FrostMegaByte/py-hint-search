@@ -227,7 +227,9 @@ def main(args: argparse.Namespace) -> None:
                     type_slots_after_pyright = gather_all_type_slots(source_code_tree)
                     editor.change_file(source_code_tree.code, None)
                     editor.has_diagnostic_error(at_start=True)
-                    added_extra_pyright_annotations = True
+                    added_extra_pyright_annotations = (
+                        type_slots_after_pyright != type_slots_groundtruth
+                    )
                 except FileNotFoundError:
                     print(
                         f"{Fore.YELLOW}'{file}' has no related Pyright stub file, but it should have one for better performance.\n"
