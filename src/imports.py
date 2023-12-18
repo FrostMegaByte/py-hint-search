@@ -2,6 +2,7 @@ import os
 import ast
 import logging
 import re
+import fnmatch
 from typing import Dict, List, Optional, Set, Union
 import typing
 import libcst as cst
@@ -140,9 +141,15 @@ def get_all_classes_in_project(
     return classes
 
 
+def find_site_packages(venv_path):
+    for root, dirnames, filenames in os.walk(venv_path):
+        for dirname in fnmatch.filter(dirnames, "site-packages"):
+            return os.path.join(root, dirname)
+
+
 def get_all_classes_in_virtual_environment(venv_path: str) -> Dict[str, str]:
     classes = {}
-    packages_path = os.path.join(venv_path, "Lib", "site-packages")
+    packages_path = find_site_packages(venv_path)
     for root, _, files in os.walk(packages_path):
         for file in files:
             if file.endswith(".py"):
