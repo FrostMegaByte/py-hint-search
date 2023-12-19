@@ -257,10 +257,9 @@ class ImportsCollector(cst.CSTVisitor):
             if m.matches(i.names, m.ImportStar()):
                 continue
             for n in i.names:
-                existing_import_item = n.evaluated_name
+                self.existing_import_items.add(n.evaluated_name)
                 if n.evaluated_alias is not None:
-                    existing_import_item = n.evaluated_alias
-                self.existing_import_items.add(existing_import_item)
+                    self.existing_import_items.add(n.evaluated_alias)
 
 
 class ImportInserter(cst.CSTTransformer):
