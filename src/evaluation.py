@@ -60,18 +60,6 @@ def gather_all_type_slots(source_code_tree: cst.Module):
     return all_type_slots
 
 
-def calculate_extra_annotations(
-    original_type_annotations,
-    updated_type_annotations,
-):
-    extra_annotations = {
-        k: v
-        for k, v in updated_type_annotations.items()
-        if v is not None and (k, None) in original_type_annotations.items()
-    }
-    return extra_annotations
-
-
 def create_evaluation_csv_file():
     headers = [
         "file",
@@ -105,6 +93,18 @@ def append_to_evaluation_csv_file(statistics):
     ) as file:
         writer = csv.writer(file)
         writer.writerow(statistics)
+
+
+def calculate_extra_annotations(
+    original_type_annotations,
+    updated_type_annotations,
+):
+    extra_annotations = {
+        k: v
+        for k, v in updated_type_annotations.items()
+        if v is not None and (k, None) in original_type_annotations.items()
+    }
+    return extra_annotations
 
 
 def gather_annotated_slots(type_slots):
@@ -155,11 +155,20 @@ def calculate_evaluation_statistics(
     available_slots = gather_available_slots(type_slots_groundtruth)
 
     try:
-        new_annotations_percentage = (
-            (len(annotations_after_ml_search) - len(annotations_groundtruth))
-            / len(available_slots)
-            * 100
-        )
+        if len(extra_ml_annotations) > 0:
+            new_annotations_percentage = (
+                (len(annotations_after_ml_search) - len(annotations_groundtruth))
+                / len(available_slots)
+                * 100
+            )
+        elif len(extra_pyright_annotations) > 0:
+            new_annotations_percentage = (
+                (len(annotations_after_pyright) - len(annotations_groundtruth))
+                / len(available_slots)
+                * 100
+            )
+        else:
+            new_annotations_percentage = 0.0
     except ZeroDivisionError:
         new_annotations_percentage = "-"
 
