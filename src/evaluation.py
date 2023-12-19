@@ -89,12 +89,22 @@ def create_evaluation_csv_file():
         "Total time (s)",
     ]
     with open(
-        "logs-evaluation/evaluation results.csv",
+        "logs-evaluation/evaluation statistics.csv",
         "w",
         newline="",
     ) as file:
         writer = csv.writer(file)
         writer.writerow(headers)
+
+
+def append_to_evaluation_csv_file(statistics):
+    with open(
+        "logs-evaluation/evaluation statistics.csv",
+        "a",
+        newline="",
+    ) as file:
+        writer = csv.writer(file)
+        writer.writerow(statistics)
 
 
 def gather_annotated_slots(type_slots):
@@ -168,11 +178,11 @@ def calculate_evaluation_statistics(
         if len(annotations_after_ml_search) > 0
         else "-",
         "available_type_slots_count": len(available_slots),
-        "total_type_slots": len(type_slots_groundtruth),
-        "extra_pyright_annotations": len(extra_pyright_annotations)
+        "total_type_slots_count": len(type_slots_groundtruth),
+        "extra_pyright_annotations_count": len(extra_pyright_annotations)
         if len(available_slots) > 0
         else "-",
-        "extra_ml_annotations": len(extra_ml_annotations)
+        "extra_ml_annotations_count": len(extra_ml_annotations)
         if len(available_slots) > 0
         else "-",
         "extra_annotations_percentage": new_annotations_percentage,
@@ -182,13 +192,3 @@ def calculate_evaluation_statistics(
         "total_time": round(total_time, 2),
     }
     return evaluation_statistics
-
-
-def append_to_evaluation_csv_file(results):
-    with open(
-        "logs-evaluation/evaluation results.csv",
-        "a",
-        newline="",
-    ) as file:
-        writer = csv.writer(file)
-        writer.writerow(results)
