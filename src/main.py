@@ -156,6 +156,9 @@ def main(args: argparse.Namespace) -> None:
 
         python_files = [file for file in files if file.endswith(".py")]
         for file in python_files:
+            logger.info("=" * 15)
+            evaluation_logger.info("=" * 15)
+
             relative_path = os.path.relpath(root, args.project_path)
             print(f"Processing file: {os.path.join(relative_path, file)}")
             logger.info(f"Processing file: {os.path.join(relative_path, file)}")
@@ -269,6 +272,15 @@ def main(args: argparse.Namespace) -> None:
             if number_of_type_slots_to_fill == 0:
                 if added_extra_pyright_annotations:
                     # There was no ML search work to do, but we added extra Pyright annotations
+                    create_stub_file(source_code_tree, typed_path, relative_path, file)
+                    print(
+                        f"{Fore.GREEN}'{file}' completed with additional Pyright annotations!\n"
+                    )
+                    logger.info(
+                        f"'{file}' completed with additional Pyright annotations!"
+                    )
+                    editor.close_file()
+
                     finish_time_ml_search = 0
                     type_slots_after_ml = None
                     finish_time_total = time.perf_counter() - start_time_total
@@ -281,15 +293,10 @@ def main(args: argparse.Namespace) -> None:
                         finish_time_ml_search,
                         finish_time_total,
                     )
+                    append_to_evaluation_csv_file(list(evaluation_statistics.values()))
 
-                    create_stub_file(source_code_tree, typed_path, relative_path, file)
-                    print(
-                        f"{Fore.GREEN}'{file}' completed with additional Pyright annotations!\n"
-                    )
-                    logger.info(
-                        f"'{file}' completed with additional Pyright annotations!"
-                    )
-                    editor.close_file()
+                    for k, v in evaluation_statistics.items():
+                        evaluation_logger.info(f"{k}: {v}")
                     continue
                 else:
                     print(
@@ -318,6 +325,11 @@ def main(args: argparse.Namespace) -> None:
             finish_time_ml_search = time.perf_counter() - start_time_ml_search
             type_slots_after_ml = gather_all_type_slots(type_annotated_source_code_tree)
 
+            create_stub_file(
+                type_annotated_source_code_tree, typed_path, relative_path, file
+            )
+            editor.close_file()
+
             finish_time_total = time.perf_counter() - start_time_total
             evaluation_statistics = calculate_evaluation_statistics(
                 os.path.join(relative_path, file),
@@ -330,11 +342,8 @@ def main(args: argparse.Namespace) -> None:
             )
             append_to_evaluation_csv_file(list(evaluation_statistics.values()))
 
-            # TODO: move this above evaluation
-            create_stub_file(
-                type_annotated_source_code_tree, typed_path, relative_path, file
-            )
-            editor.close_file()
+            for k, v in evaluation_statistics.items():
+                evaluation_logger.info(f"{k}: {v}")
             print()
 
     editor.stop()
