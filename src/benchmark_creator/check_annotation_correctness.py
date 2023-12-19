@@ -67,8 +67,8 @@ def parse_arguments() -> argparse.Namespace:
         "-mlpp",
         "--ml-annotated-project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/type-annotated-source-code",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/type-annotated-source-code",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/type-annotated-source-code",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/type-annotated-source-code-stripped-run",
         help="The path to the ML annotated project directory.",
         # required=True,
     )
@@ -76,8 +76,8 @@ def parse_arguments() -> argparse.Namespace:
         "-fapp",
         "--fully-annotated-project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/fully-annotated",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/fully-annotated",
         help="The path to the fully annotated project directory.",
         # required=True,
     )
@@ -87,27 +87,24 @@ def parse_arguments() -> argparse.Namespace:
         type=bool,
         default=True,
         help="Log which fully annotated type and ML-determined type don't match.",
-        # required=True,
     )
 
     return parser.parse_args()
 
 
-def create_results_csv_file():
+def create_correctness_csv_file():
     headers = [
         "file",
-        "correct",
-        "incorrect",
-        "# ground truth annotations",
-        "# available type slots",
+        "# correct",
+        "# incorrect",
+        "# groundtruth annotations",
+        # "# available type slots",
         "precision",
         "recall",
-        "# extra ML annotations",
-        f"% extra ML annotations",
-        "# total type slots",
+        # "# total type slots",
     ]
     with open(
-        "logs-evaluation/evaluation results.csv",
+        "logs-evaluation/type correctness.csv",
         "w",
         newline="",
     ) as file:
@@ -115,20 +112,20 @@ def create_results_csv_file():
         writer.writerow(headers)
 
 
-def append_to_results_csv_file(results):
+def append_to_correctness_csv_file(correctness_statistics):
     with open(
-        "logs-evaluation/evaluation results.csv",
+        "logs-evaluation/type correctness.csv",
         "a",
         newline="",
     ) as file:
         writer = csv.writer(file)
-        writer.writerow(results)
+        writer.writerow(correctness_statistics)
 
 
 def main():
     args = parse_arguments()
     os.chdir(os.path.abspath(os.path.join(args.fully_annotated_project_path, "..")))
-    create_results_csv_file()
+    create_correctness_csv_file()
 
     for root, dirs, files in os.walk(args.fully_annotated_project_path):
         python_files = [file for file in files if file.endswith(".py")]
@@ -179,6 +176,11 @@ def main():
                 for k, v in visitor_ml_annotated.all_type_slots.items()
                 if k in groundtruth_annotations
             }
+            # available_type_slots = {
+            #     k: v
+            #     for k, v in visitor_fully_annotated.all_type_slots.items()
+            #     if v in UNANNOTATED_GROUND_TRUTHS
+            # }
 
             assert len(groundtruth_annotations) == len(ml_annotations)
 
@@ -195,15 +197,16 @@ def main():
                         cst.parse_expression(ml_annotation)
                     )
 
-                if ml_annotation != groundtruth_annotation:
+                if ml_annotation == groundtruth_annotation:
+                    n_correct += 1
+                # TODO: elif check for partial match
+                else:
                     n_incorrect += 1
                     if args.verbose:
                         print(f"{Fore.RED}Annotation mismatch for '{slot}':")
                         print(f"{Fore.RED}Fully annotated: {groundtruth_annotation}")
                         print(f"{Fore.RED}ML annotated: {ml_annotation}")
                         print()
-                else:
-                    n_correct += 1
 
             try:
                 n_all = len([v for v in ml_annotations.values() if v is not None])
@@ -216,37 +219,17 @@ def main():
             except ZeroDivisionError:
                 recall = "-"
 
-            all_slots_count = len(visitor_fully_annotated.all_type_slots)
-            all_available_slots_count = len(
-                visitor_fully_annotated.all_type_slots
-            ) - len(groundtruth_annotations)
-
-            extra_ml_annotations = {
-                k: v
-                for k, v in visitor_ml_annotated.all_type_slots.items()
-                if k not in groundtruth_annotations and v is not None
+            correctness_statistics = {
+                "file": os.path.join(relative_path, file),
+                "correct_count": n_correct,
+                "incorrect_count": n_incorrect,
+                "groundtruth_annotations_count": n_correct + n_incorrect,
+                # "available_slots_count": len(available_type_slots),
+                "precision": precision,
+                "recall": recall,
+                # "total_type_slots_count": len(visitor_fully_annotated.all_type_slots),
             }
-            new_annotations_count = len(extra_ml_annotations)
-            try:
-                new_annotations_percentage = (
-                    new_annotations_count / all_available_slots_count * 100
-                )
-            except ZeroDivisionError:
-                new_annotations_percentage = "-"
-
-            results = [
-                os.path.join(relative_path, file),
-                n_correct,
-                n_incorrect,
-                n_correct + n_incorrect,
-                all_available_slots_count,
-                precision,
-                recall,
-                new_annotations_count,
-                new_annotations_percentage,
-                all_slots_count,
-            ]
-            append_to_results_csv_file(results)
+            append_to_correctness_csv_file(list(correctness_statistics.values()))
 
 
 if __name__ == "__main__":
