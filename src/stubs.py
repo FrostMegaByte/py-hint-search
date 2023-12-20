@@ -1,40 +1,63 @@
 import libcst as cst
 import libcst.matchers as m
+from libcst import RemoveFromParent
+
+
+class ClassDefFinder(cst.CSTVisitor):
+    def __init__(self):
+        self.has_nested_class = False
+
+    def visit_ClassDef(self, node: cst.ClassDef) -> None:
+        self.has_nested_class = True
+
+
+class FunctionDefFinder(cst.CSTVisitor):
+    def __init__(self):
+        self.has_nested_function = False
+
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
+        self.has_nested_function = True
 
 
 class StubTransformer(cst.CSTTransformer):
     def __init__(self):
-        self.in_class_count = 0
         self.in_function_count = 0
 
     def visit_ClassDef(self, node: cst.ClassDef) -> bool:
-        self.in_class_count += 1
-        return self.in_class_count == 1
+        return True
 
     def leave_ClassDef(
         self, original_node: cst.ClassDef, updated_node: cst.ClassDef
     ) -> cst.CSTNode:
-        self.in_class_count -= 1
-        if self.in_class_count == 0:
-            return updated_node
-        else:
-            return cst.parse_statement("...")
+        finder_classes = ClassDefFinder()
+        updated_node.body.visit(finder_classes)
+
+        finder_funcs = FunctionDefFinder()
+        updated_node.body.visit(finder_funcs)
+
+        if not finder_classes.has_nested_class and not finder_funcs.has_nested_function:
+            return updated_node.with_changes(body=cst.parse_statement("..."))
+        return updated_node
 
     def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
         self.in_function_count += 1
-        return self.in_function_count == 1
+        if self.in_function_count == 2:
+            return False
+        return True
 
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
     ) -> cst.CSTNode:
         """Remove function bodies"""
         self.in_function_count -= 1
-        if self.in_function_count == 0 or (
-            self.in_function_count == 1 and self.in_class_count == 1
-        ):
+        if self.in_function_count == 1:
+            return RemoveFromParent()
+
+        finder = ClassDefFinder()
+        updated_node.visit(finder)
+        if not finder.has_nested_class:
             return updated_node.with_changes(body=cst.parse_statement("..."))
-        else:
-            return cst.parse_statement("...")
+        return updated_node
 
     def leave_SimpleStatementLine(
         self,
