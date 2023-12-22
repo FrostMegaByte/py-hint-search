@@ -258,31 +258,41 @@ class RemoveIncompleteAnnotations(cst.CSTTransformer):
 
 
 class BinaryAnnotationTransformer(cst.CSTTransformer):
+    def __init__(self) -> None:
+        self.should_import_optional = False
+        self.should_import_union = False
+
     def leave_Annotation(
         self, original_node: cst.Annotation, updated_node: cst.Annotation
     ) -> cst.Annotation:
         if m.matches(updated_node.annotation, m.BinaryOperation()):
-            transformer = BinaryOperationToUnionTransformer()
+            transformer = BinaryOperationToUnionTransformer(self)
             union_annotation = updated_node.annotation.visit(transformer)
             return updated_node.with_changes(annotation=union_annotation)
         return updated_node
 
 
 class BinaryOperationToUnionTransformer(cst.CSTTransformer):
+    def __init__(self, parent) -> None:
+        self.parent = parent
+
     def leave_BinaryOperation(
         self, original_node: cst.BinaryOperation, updated_node: cst.BinaryOperation
     ) -> cst.Subscript:
         if updated_node.left.value == "None":
+            self.parent.should_import_optional = True
             return cst.Subscript(
                 value=cst.Name("Optional"),
                 slice=[cst.SubscriptElement(slice=cst.Index(value=updated_node.right))],
             )
         elif updated_node.right.value == "None":
+            self.parent.should_import_optional = True
             return cst.Subscript(
                 value=cst.Name("Optional"),
                 slice=[cst.SubscriptElement(slice=cst.Index(value=updated_node.left))],
             )
         else:
+            self.parent.should_import_union = True
             return cst.Subscript(
                 value=cst.Name("Union"),
                 slice=[

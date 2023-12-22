@@ -12,6 +12,7 @@ from imports import (
     add_import_to_searchtree,
     get_all_classes_in_project,
     get_all_classes_in_virtual_environment,
+    handle_binary_operation_imports,
 )
 from type4py_api import Type4PyException, get_ordered_type4py_predictions
 from annotations import (
@@ -220,6 +221,11 @@ def main(args: argparse.Namespace) -> None:
 
             transformer_binary_ops = BinaryAnnotationTransformer()
             source_code_tree = source_code_tree.visit(transformer_binary_ops)
+            source_code_tree = handle_binary_operation_imports(
+                source_code_tree,
+                transformer_binary_ops.should_import_optional,
+                transformer_binary_ops.should_import_union,
+            )
 
             # Get available and already type annotated parameters and return types
             visitor_type_slots = TypeSlotsVisitor()

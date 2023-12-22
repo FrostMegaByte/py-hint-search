@@ -299,6 +299,24 @@ class TypeAliasInserter(cst.CSTTransformer):
         return updated_node.with_changes(body=body_with_type_alias)
 
 
+def handle_binary_operation_imports(
+    source_code_tree, should_import_optional, should_import_union
+):
+    if not should_import_optional and not should_import_union:
+        return source_code_tree
+
+    imports = []
+    if should_import_optional:
+        imports.append("Optional")
+    if should_import_union:
+        imports.append("Union")
+
+    import_statement = "from typing import " + ", ".join(imports)
+    transformer = ImportInserter(import_statement)
+    source_code_tree = source_code_tree.visit(transformer)
+    return source_code_tree
+
+
 # get_all_classes_in_project(
 #     "D:/Documents/test2/plagiarism-checker",
 # )
