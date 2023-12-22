@@ -22,7 +22,8 @@ def create_pyright_typestubs(project_path: str) -> None:
                 f.write("")
 
         # Create type stubs for all python files in subdirectory
-        subprocess.run(f"pyright --createstub {subdirectory}")
+        # TODO: possibly try to get this to work with "poetry", "run" in front
+        subprocess.run(["pyright", "--createstub", subdirectory])
 
         # Remove __init__.py and __init__.pyi file if it didn't exist before
         if not init_file_exists:
