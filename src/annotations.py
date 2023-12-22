@@ -323,7 +323,7 @@ class TypeSlotsVisitor(cst.CSTVisitor):
         else:
             self.available_slots.append(tuple(self.stack))
         self.stack.pop()
-        return True
+        return False  # IMPORTANT: If this is set to True, inner functions will also be annotated and the ML search will determine more types. However, since inner functions cannot be in stub files, we ignore them to reduce the search space.
 
     def leave_FunctionDef(self, node: cst.FunctionDef) -> None:
         self.stack.pop()
