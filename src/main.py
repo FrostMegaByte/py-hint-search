@@ -62,7 +62,6 @@ def parse_arguments() -> argparse.Namespace:
         type=dir_path,
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/.venv",
         help="The path to the virtual environment.",
-        # required=True,
     )
     parser.add_argument(
         "--top-k",
@@ -247,28 +246,11 @@ def main(args: argparse.Namespace) -> None:
             transformer_binary_ops = BinaryAnnotationTransformer()
             source_code_tree = source_code_tree.visit(transformer_binary_ops)
 
-            # Get ML type annotation predictions
-            start_time_ml_search = time.perf_counter()
-            try:
-                ml_predictions = get_ordered_type4py_predictions(source_code_tree.code)
-            except Type4PyException:
-                print(
-                    f"{Fore.YELLOW}'{file}' cannot be parsed by Type4Py. Skipping...\n"
-                )
-                logger.warning(f"'{file}' cannot be parsed by Type4Py. Skipping...")
-                editor.close_file()
-                continue
-
             # Get available and already type annotated parameters and return types
             visitor_type_slots = TypeSlotsVisitor()
             source_code_tree.visit(visitor_type_slots)
 
-            # Transform the predictions and filter out already type annotated parameters and return types
-            search_tree_layers = transform_predictions_to_slots_to_search(
-                ml_predictions, visitor_type_slots.available_slots
-            )
-
-            number_of_type_slots_to_fill = len(search_tree_layers)
+            number_of_type_slots_to_fill = len(visitor_type_slots.available_slots)
             if number_of_type_slots_to_fill == 0:
                 if added_extra_pyright_annotations:
                     # There was no ML search work to do, but we added extra Pyright annotations
@@ -310,6 +292,23 @@ def main(args: argparse.Namespace) -> None:
                 logger.warning(f"'{file}' contains too many type slots. Skipping...")
                 editor.close_file()
                 continue
+
+            # Get ML type annotation predictions
+            start_time_ml_search = time.perf_counter()
+            try:
+                ml_predictions = get_ordered_type4py_predictions(source_code_tree.code)
+            except Type4PyException:
+                print(
+                    f"{Fore.YELLOW}'{file}' cannot be parsed by Type4Py. Skipping...\n"
+                )
+                logger.warning(f"'{file}' cannot be parsed by Type4Py. Skipping...")
+                editor.close_file()
+                continue
+
+            # Transform the predictions and filter out already type annotated parameters and return types
+            search_tree_layers = transform_predictions_to_slots_to_search(
+                ml_predictions, visitor_type_slots.available_slots
+            )
 
             # Build the search tree
             search_tree = build_search_tree(search_tree_layers, args.top_k)
