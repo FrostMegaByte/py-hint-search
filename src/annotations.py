@@ -295,6 +295,7 @@ class BinaryOperationToUnionTransformer(cst.CSTTransformer):
 class TypeSlotsVisitor(cst.CSTVisitor):
     def __init__(self) -> None:
         self.stack: List[Tuple[str, ...]] = []
+        self.all_type_slots: Dict[Tuple[str, ...], str] = {}
         self.already_annotated_slots: List[Tuple[str, ...]] = []
         self.available_slots: List[Tuple[str, ...]] = []
 
@@ -305,22 +306,30 @@ class TypeSlotsVisitor(cst.CSTVisitor):
     def leave_ClassDef(self, node: cst.ClassDef) -> None:
         self.stack.pop()
 
-    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
+    def visit_FunctionDef(self, node: cst.FunctionDef) -> Optional[bool]:
         self.stack.append(node.name.value)
         for param in node.params.params:
             if param.name.value == "self":
                 continue
             self.stack.append(param.name.value)
             if param.annotation is not None:
+                self.all_type_slots[tuple(self.stack)] = node_to_code(
+                    param.annotation.annotation
+                )
                 self.already_annotated_slots.append(tuple(self.stack))
             else:
+                self.all_type_slots[tuple(self.stack)] = None
                 self.available_slots.append(tuple(self.stack))
             self.stack.pop()
 
         self.stack.append("return")
         if node.returns is not None:
+            self.all_type_slots[tuple(self.stack)] = node_to_code(
+                node.returns.annotation
+            )
             self.already_annotated_slots.append(tuple(self.stack))
         else:
+            self.all_type_slots[tuple(self.stack)] = None
             self.available_slots.append(tuple(self.stack))
         self.stack.pop()
         return False  # IMPORTANT: If this is set to True, inner functions will also be annotated and the ML search will determine more types. However, since inner functions cannot be in stub files, we ignore them to reduce the search space.

@@ -2,45 +2,7 @@ import csv
 from typing import Dict, List, Optional, Tuple
 import libcst as cst
 
-from annotations import node_to_code
-
-
-class TypeAnnotationsCollector(cst.CSTVisitor):
-    def __init__(self) -> None:
-        self.stack: List[Tuple[str, ...]] = []
-        self.all_type_slots: Dict[Tuple[str, ...], str] = {}
-
-    def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
-        self.stack.append(node.name.value)
-        return True
-
-    def leave_ClassDef(self, node: cst.ClassDef) -> None:
-        self.stack.pop()
-
-    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
-        self.stack.append(node.name.value)
-        for param in node.params.params:
-            if param.name.value == "self":
-                continue
-            self.stack.append(param.name.value)
-            annotation = (
-                node_to_code(param.annotation.annotation)
-                if param.annotation is not None
-                else None
-            )
-            self.all_type_slots[tuple(self.stack)] = annotation
-            self.stack.pop()
-
-        self.stack.append("return")
-        return_annotation = (
-            node_to_code(node.returns.annotation) if node.returns is not None else None
-        )
-        self.all_type_slots[tuple(self.stack)] = return_annotation
-        self.stack.pop()
-        return True
-
-    def leave_FunctionDef(self, node: cst.FunctionDef) -> None:
-        self.stack.pop()
+from annotations import TypeSlotsVisitor
 
 
 INCOMPLETE_TYPE_ANNOTATIONS = {
@@ -51,7 +13,7 @@ INCOMPLETE_TYPE_ANNOTATIONS = {
 
 
 def gather_all_type_slots(source_code_tree: cst.Module):
-    visitor = TypeAnnotationsCollector()
+    visitor = TypeSlotsVisitor()
     source_code_tree.visit(visitor)
     all_type_slots = {
         k: v if v not in INCOMPLETE_TYPE_ANNOTATIONS else None
