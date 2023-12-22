@@ -131,6 +131,7 @@ def calculate_evaluation_statistics(
             )
         else:
             new_annotations_percentage = 0.0
+        new_annotations_percentage = round(new_annotations_percentage, 2)
     except ZeroDivisionError:
         new_annotations_percentage = "-"
 
