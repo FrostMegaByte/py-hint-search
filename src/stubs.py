@@ -1,3 +1,5 @@
+import os
+import subprocess
 import libcst as cst
 import libcst.matchers as m
 from libcst import RemoveFromParent
@@ -92,3 +94,49 @@ class StubTransformer(cst.CSTTransformer):
             ]
         )
         return updated_node.with_changes(body=tuple(newbody))
+
+
+def create_stub_file(
+    source_code_tree,
+    typed_path,
+    relative_path,
+    file_name,
+    remove_source_code_file=False,
+) -> None:
+    # Write the type annotated source code to a file
+    output_typed_source_directory = os.path.abspath(
+        os.path.join(typed_path + "-source-code", relative_path)
+    )
+    os.makedirs(output_typed_source_directory, exist_ok=True)
+    source_code_file = os.path.join(output_typed_source_directory, file_name)
+    open(source_code_file, "w", encoding="utf-8").write(source_code_tree.code)
+
+    # Use stubgen to create a stub file
+    output_typed_directory = os.path.abspath(os.path.join(typed_path, relative_path))
+    stubgen_result = subprocess.run(
+        [
+            "poetry",
+            "run",
+            "stubgen",
+            "--output",
+            output_typed_directory,
+            source_code_file,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    if stubgen_result.stderr:
+        print("Stubgen failed, so creating stub using own stub generator.")
+        transformer = StubTransformer()
+        type_annotated_stub_tree = source_code_tree.visit(transformer)
+
+        # Write the type annotated stub to a file
+        os.makedirs(output_typed_directory, exist_ok=True)
+        open(
+            os.path.join(output_typed_directory, file_name + "i"), "w", encoding="utf-8"
+        ).write(type_annotated_stub_tree.code)
+
+    if remove_source_code_file:
+        os.remove(source_code_file)
+        os.rmdir(output_typed_source_directory)

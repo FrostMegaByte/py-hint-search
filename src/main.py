@@ -26,7 +26,7 @@ from searchtree import (
     build_search_tree,
     depth_first_traversal,
 )
-from stubs import StubTransformer
+from stubs import create_stub_file
 from evaluation import (
     append_to_evaluation_csv_file,
     calculate_evaluation_statistics,
@@ -52,8 +52,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/redis-correct/fully-annotated",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/fully-annotated",
         help="The path to the project which will be type annotated.",
         # required=True,
     )
@@ -90,43 +90,16 @@ def remove_pyright_config_file(project_path: str) -> None:
         os.remove(pyright_config_file)
 
 
-def _create_type_annotated_source_code_file(
-    source_code_tree, typed_path, relative_path, file_name
-) -> None:
-    output_typed_directory = os.path.abspath(
-        os.path.join(typed_path + "-source-code", relative_path)
-    )
-    os.makedirs(output_typed_directory, exist_ok=True)
-    open(os.path.join(output_typed_directory, file_name), "w", encoding="utf-8").write(
-        source_code_tree.code
-    )
-
-
-def create_stub_file(source_code_tree, typed_path, relative_path, file_name) -> None:
-    _create_type_annotated_source_code_file(
-        source_code_tree, typed_path, relative_path, file_name
-    )
-
-    # Create type stub for the type annotated source code tree
-    transformer = StubTransformer()
-    type_annotated_stub_tree = source_code_tree.visit(transformer)
-
-    # Write the type annotated stub to a file
-    output_typed_directory = os.path.abspath(os.path.join(typed_path, relative_path))
-    os.makedirs(output_typed_directory, exist_ok=True)
-    open(
-        os.path.join(output_typed_directory, file_name + "i"), "w", encoding="utf-8"
-    ).write(type_annotated_stub_tree.code)
-
-
 def main(args: argparse.Namespace) -> None:
     editor = FakeEditor()
     working_directory = os.getcwd()
     root_uri = f"file:///{args.project_path}"
 
-    stubs_directory = "typings"
-    stubs_path = os.path.abspath(os.path.join(working_directory, stubs_directory))
-    PYRIGHT_ANNOTATIONS_EXIST = os.path.isdir(stubs_path)
+    stubs_directory_pyright = "typings"
+    stubs_path_pyright = os.path.abspath(
+        os.path.join(working_directory, stubs_directory_pyright)
+    )
+    PYRIGHT_ANNOTATIONS_EXIST = os.path.isdir(stubs_path_pyright)
 
     typed_directory = "type-annotated"
     typed_path = os.path.abspath(os.path.join(working_directory, typed_directory))
@@ -191,7 +164,9 @@ def main(args: argparse.Namespace) -> None:
             added_extra_pyright_annotations = False
             if PYRIGHT_ANNOTATIONS_EXIST:
                 relative_stub_subdirectory = os.path.relpath(root, working_directory)
-                stub_directory = os.path.join(stubs_path, relative_stub_subdirectory)
+                stub_directory = os.path.join(
+                    stubs_path_pyright, relative_stub_subdirectory
+                )
                 stub_file = os.path.join(stub_directory, file + "i")
                 try:
                     with open(stub_file, "r", encoding="utf-8") as f:
