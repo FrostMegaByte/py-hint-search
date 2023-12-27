@@ -1,5 +1,5 @@
+import os
 import csv
-from typing import Dict, List, Optional, Tuple
 import libcst as cst
 
 from annotations import TypeSlotsVisitor
@@ -23,6 +23,10 @@ def gather_all_type_slots(source_code_tree: cst.Module):
 
 
 def create_evaluation_csv_file():
+    csv_file = "logs-evaluation/evaluation statistics.csv"
+    if os.path.exists(csv_file):
+        return
+
     headers = [
         "file",
         "# groundtruth annotations",
@@ -39,7 +43,7 @@ def create_evaluation_csv_file():
         "Total time (s)",
     ]
     with open(
-        "logs-evaluation/evaluation statistics.csv",
+        csv_file,
         "w",
         newline="",
     ) as file:
