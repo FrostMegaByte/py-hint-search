@@ -41,6 +41,9 @@ def create_evaluation_csv_file():
         "Average time per slot (s)",
         "ML search time (s)",
         "Total time (s)",
+        "# total annotations (excl. dunder methods)",
+        "# common annotations (excl. dunder methods)",
+        "# rare annotations (excl. dunder methods)",
     ]
     with open(
         csv_file,
@@ -74,14 +77,62 @@ def calculate_extra_annotations(
 
 
 def gather_annotated_slots(type_slots):
-    if type_slots is None:
-        return {}
     annotations = {k: v for k, v in type_slots.items() if v is not None}
     return annotations
 
 
 def gather_available_slots(type_slots):
     annotations = {k: v for k, v in type_slots.items() if v is None}
+    return annotations
+
+
+def gather_common_and_rare_annotations(type_slots):
+    COMMON_ANNOTATIONS = [
+        "str",
+        "int",
+        "float",
+        "bool",
+        "list",
+        "dict",
+        "tuple",
+        "set",
+        "None",
+    ]  # TODO: check papers to add more
+
+    common, rare = {}, {}
+    for k, v in type_slots.items():
+        if v in COMMON_ANNOTATIONS:
+            common[k] = v
+        else:
+            rare[k] = v
+    return common, rare
+
+
+def remove_dunder_methods(type_slots):
+    # From dunder several methods, the return type is always known
+    DUNDER_METHODS = [
+        "__init__",
+        "__repr__",
+        "__str__",
+        "__eq__",
+        "__ne__",
+        "__lt__",
+        "__gt__",
+        "__le__",
+        "__ge__",
+        "__len__",
+        "__contains__",
+        "__round__",
+        "__floor__",
+        "__ceil__",
+    ]
+
+    annotations = {
+        k: v
+        for k, v in type_slots.items()
+        if "return" not in k
+        or not any(dunder_method in k for dunder_method in DUNDER_METHODS)
+    }
     return annotations
 
 
@@ -94,19 +145,19 @@ def calculate_evaluation_statistics(
     ml_search_time,
     total_time,
 ):
-    if type_slots_after_pyright is not None and type_slots_after_ml_search is not None:
+    if len(type_slots_after_pyright) > 0 and len(type_slots_after_ml_search) > 0:
         extra_pyright_annotations = calculate_extra_annotations(
             type_slots_groundtruth, type_slots_after_pyright
         )
         extra_ml_annotations = calculate_extra_annotations(
             type_slots_after_pyright, type_slots_after_ml_search
         )
-    elif type_slots_after_pyright is not None:
+    elif len(type_slots_after_pyright) > 0:
         extra_pyright_annotations = calculate_extra_annotations(
             type_slots_groundtruth, type_slots_after_pyright
         )
         extra_ml_annotations = {}
-    elif type_slots_after_ml_search is not None:
+    elif len(type_slots_after_ml_search) > 0:
         extra_pyright_annotations = {}
         extra_ml_annotations = calculate_extra_annotations(
             type_slots_groundtruth, type_slots_after_ml_search
@@ -119,6 +170,13 @@ def calculate_evaluation_statistics(
     annotations_after_pyright = gather_annotated_slots(type_slots_after_pyright)
     annotations_after_ml_search = gather_annotated_slots(type_slots_after_ml_search)
     available_slots = gather_available_slots(type_slots_groundtruth)
+
+    annotations_all = (
+        annotations_after_ml_search
+        or annotations_after_pyright
+        or annotations_groundtruth
+        or {}
+    )
 
     try:
         if len(extra_ml_annotations) > 0:
@@ -144,6 +202,11 @@ def calculate_evaluation_statistics(
     except ZeroDivisionError:
         avg_time_per_slot = "-"
 
+    annotations_filtered = remove_dunder_methods(annotations_all)
+    annotations_common, annotations_rare = gather_common_and_rare_annotations(
+        annotations_filtered
+    )
+
     evaluation_statistics = {
         "file": file,
         "annotations_groundtruth_count": len(annotations_groundtruth),
@@ -166,5 +229,8 @@ def calculate_evaluation_statistics(
         "avg_time_per_slot": avg_time_per_slot,
         "ml_search_time": round(ml_search_time, 2),
         "total_time": round(total_time, 2),
+        "total_annotations_excluding_dunder_methods_count": len(annotations_filtered),
+        "common_annotations_excluding_dunder_methods_count": len(annotations_common),
+        "rare_annotations_excluding_dunder_methods_count": len(annotations_rare),
     }
     return evaluation_statistics

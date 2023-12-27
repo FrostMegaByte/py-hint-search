@@ -266,7 +266,7 @@ def main(args: argparse.Namespace) -> None:
                     editor.close_file()
 
                     finish_time_ml_search = 0
-                    type_slots_after_ml = None
+                    type_slots_after_ml = {}
                     finish_time_total = time.perf_counter() - start_time_total
                     evaluation_statistics = calculate_evaluation_statistics(
                         os.path.join(relative_path, file),
@@ -318,7 +318,7 @@ def main(args: argparse.Namespace) -> None:
             evaluation_statistics = calculate_evaluation_statistics(
                 os.path.join(relative_path, file),
                 type_slots_groundtruth,
-                type_slots_after_pyright if added_extra_pyright_annotations else None,
+                type_slots_after_pyright if added_extra_pyright_annotations else {},
                 type_slots_after_ml,
                 number_of_type_slots_to_fill,
                 finish_time_ml_search,
