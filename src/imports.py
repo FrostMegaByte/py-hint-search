@@ -100,20 +100,23 @@ BUILT_IN_TYPES = {
 } | EXCEPTIONS_AND_ERROS
 
 
-def get_classes_from_file(file_path: str) -> Dict[str, str]:
+def get_classes_from_file(
+    file_path: str, is_virtual_env: bool = False
+) -> Dict[str, str]:
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             tree = ast.parse(f.read())
     except Exception as e:
-        print(e)
         logger = logging.getLogger(__name__)
         logger.error(e)
 
-    class_dict = {
-        node.name: file_path
-        for node in ast.walk(tree)
-        if isinstance(node, ast.ClassDef)
-    }
+    class_dict = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        if is_virtual_env and node.name.startswith("_"):
+            continue
+        class_dict[node.name] = file_path
     return class_dict
 
 
@@ -137,7 +140,7 @@ def get_all_classes_in_project(
         for file in files:
             if file.endswith(".py"):
                 file_path = os.path.join(root, file)
-                classes |= get_classes_from_file(file_path)
+                classes |= get_classes_from_file(file_path, False)
     return classes
 
 
@@ -154,7 +157,7 @@ def get_all_classes_in_virtual_environment(venv_path: str) -> Dict[str, str]:
         for file in files:
             if file.endswith(".py"):
                 file_path = os.path.join(root, file)
-                classes |= get_classes_from_file(file_path)
+                classes |= get_classes_from_file(file_path, True)
     return classes
 
 
@@ -166,6 +169,8 @@ def _get_import_module_path(
         current_file,
     )
     path_list = relative_path.removesuffix(".py").split("\\")
+    if "site-packages" in path_list:
+        path_list = path_list[path_list.index("site-packages") + 1 :]
     path_list = [x for x in path_list if x != ".."]
     module_path = ".".join(path_list)
     return module_path
