@@ -42,6 +42,7 @@ def create_evaluation_csv_file():
         "ML search time (s)",
         "Total time (s)",
         "# total annotations (excl. dunder methods)",
+        "# ubiquitous annotations (excl. dunder methods)",
         "# common annotations (excl. dunder methods)",
         "# rare annotations (excl. dunder methods)",
     ]
@@ -87,25 +88,126 @@ def gather_available_slots(type_slots):
 
 
 def gather_common_and_rare_annotations(type_slots):
-    COMMON_ANNOTATIONS = [
+    # Top 10
+    UBIQUITOUS_ANNOTATIONS = [
         "str",
         "int",
-        "float",
+        "List",
+        "List[str]",
         "bool",
-        "list",
-        "dict",
-        "tuple",
-        "set",
+        "float",
+        "Dict",
+        "Dict[str, Any]",
+        "Dict[str, str]",
+        "Optional[str]",  # Should be Union[str, None] after evaluation transformations
+        # Remove Any and None annotations as in other papers for evaluation
+        "Any",
         "None",
-    ]  # TODO: check papers to add more
+    ]
 
-    common, rare = {}, {}
+    # Top 100 (covers 98%)
+    COMMON_ANNOTATIONS = {
+        "Scope",
+        "<List>",
+        "Mapping",
+        "bytes",
+        "object",
+        "Message",
+        "Tensor",
+        "Parameter",
+        "Event",
+        "GlobalState",
+        "Namespace",
+        "Iterable",
+        "Field",
+        "UserContext",
+        "AsyncIterator",
+        "T",
+        "Variable",
+        "Name",
+        "Path",
+        "Article",
+        "ndarray",
+        "Awaitable",
+        "Settings",
+        "Application",
+        "ArgumentParser",
+        "Iterator",
+        "IO",
+        "Issue",
+        "PartyID",
+        "Module",
+        "Outcome",
+        "Connection",
+        "Item",
+        "BlockHeaderAPI",
+        "DataT",
+        "Literal",
+        "Response",
+        "HttpRequest",
+        "Config",
+        "User",
+        "State",
+        "Address",
+        "Decimal",
+        "Collection",
+        "Task",
+        "Result",
+        "Generator",
+        "_T",
+        "Node",
+        "Container",
+        "Type",
+        "Vertex",
+        "date",
+        "Table",
+        "View",
+        "Candidates",
+        "Configuration",
+        "Expr",
+        "BaseException",
+        "CWLObjectType",
+        "Mock",
+        "Context",
+        "DataFrame",
+        "Logger",
+        "URL",
+        "MagicMock",
+        "Model",
+        "Qubit",
+        "Set",
+        "type",
+        "Token",
+        "Client",
+        "Tuple",
+        "Session",
+        "ID",
+        "Exception",
+        "BytesIO",
+        "Flask",
+        "timedelta",
+        "Source",
+        "UserID",
+        "Request",
+        "Sequence",
+        "datetime",
+        "Nvim",
+        "Root",
+        "Redis",
+        "Callable",
+        "Text",
+        "...",
+    }
+
+    ubiquitous, common, rare = {}, {}, {}
     for k, v in type_slots.items():
-        if v in COMMON_ANNOTATIONS:
+        if v in UBIQUITOUS_ANNOTATIONS:
+            ubiquitous[k] = v
+        elif v in COMMON_ANNOTATIONS:
             common[k] = v
         else:
             rare[k] = v
-    return common, rare
+    return ubiquitous, common, rare
 
 
 def remove_dunder_methods(type_slots):
@@ -202,10 +304,13 @@ def calculate_evaluation_statistics(
     except ZeroDivisionError:
         avg_time_per_slot = "-"
 
+    # TODO: Move this to check_annotation_correctness.py
     annotations_filtered = remove_dunder_methods(annotations_all)
-    annotations_common, annotations_rare = gather_common_and_rare_annotations(
-        annotations_filtered
-    )
+    (
+        annotations_ubiquitous,
+        annotations_common,
+        annotations_rare,
+    ) = gather_common_and_rare_annotations(annotations_filtered)
 
     evaluation_statistics = {
         "file": file,
@@ -230,6 +335,9 @@ def calculate_evaluation_statistics(
         "ml_search_time": round(ml_search_time, 2),
         "total_time": round(total_time, 2),
         "total_annotations_excluding_dunder_methods_count": len(annotations_filtered),
+        "ubiquitous_annotations_excluding_dunder_methods_count": len(
+            annotations_ubiquitous
+        ),
         "common_annotations_excluding_dunder_methods_count": len(annotations_common),
         "rare_annotations_excluding_dunder_methods_count": len(annotations_rare),
     }
