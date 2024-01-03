@@ -41,10 +41,6 @@ def create_evaluation_csv_file():
         "Average time per slot (s)",
         "ML search time (s)",
         "Total time (s)",
-        "# total annotations (excl. dunder methods)",
-        "# ubiquitous annotations (excl. dunder methods)",
-        "# common annotations (excl. dunder methods)",
-        "# rare annotations (excl. dunder methods)",
     ]
     with open(
         csv_file,
@@ -87,157 +83,6 @@ def gather_available_slots(type_slots):
     return annotations
 
 
-def gather_common_and_rare_annotations(type_slots):
-    # Top 10
-    UBIQUITOUS_ANNOTATIONS = [
-        "str",
-        "int",
-        "List",
-        "List[str]",
-        "bool",
-        "float",
-        "Dict",
-        "Dict[str, Any]",
-        "Dict[str, str]",
-        "Optional[str]",  # Should be Union[str, None] after evaluation transformations
-        # Remove Any and None annotations as in other papers for evaluation
-        "Any",
-        "None",
-    ]
-
-    # Top 100 (covers 98%)
-    COMMON_ANNOTATIONS = {
-        "Scope",
-        "<List>",
-        "Mapping",
-        "bytes",
-        "object",
-        "Message",
-        "Tensor",
-        "Parameter",
-        "Event",
-        "GlobalState",
-        "Namespace",
-        "Iterable",
-        "Field",
-        "UserContext",
-        "AsyncIterator",
-        "T",
-        "Variable",
-        "Name",
-        "Path",
-        "Article",
-        "ndarray",
-        "Awaitable",
-        "Settings",
-        "Application",
-        "ArgumentParser",
-        "Iterator",
-        "IO",
-        "Issue",
-        "PartyID",
-        "Module",
-        "Outcome",
-        "Connection",
-        "Item",
-        "BlockHeaderAPI",
-        "DataT",
-        "Literal",
-        "Response",
-        "HttpRequest",
-        "Config",
-        "User",
-        "State",
-        "Address",
-        "Decimal",
-        "Collection",
-        "Task",
-        "Result",
-        "Generator",
-        "_T",
-        "Node",
-        "Container",
-        "Type",
-        "Vertex",
-        "date",
-        "Table",
-        "View",
-        "Candidates",
-        "Configuration",
-        "Expr",
-        "BaseException",
-        "CWLObjectType",
-        "Mock",
-        "Context",
-        "DataFrame",
-        "Logger",
-        "URL",
-        "MagicMock",
-        "Model",
-        "Qubit",
-        "Set",
-        "type",
-        "Token",
-        "Client",
-        "Tuple",
-        "Session",
-        "ID",
-        "Exception",
-        "BytesIO",
-        "Flask",
-        "timedelta",
-        "Source",
-        "UserID",
-        "Request",
-        "Sequence",
-        "datetime",
-        "Nvim",
-        "Root",
-        "Redis",
-        "Callable",
-        "Text",
-        "...",
-    }
-
-    ubiquitous, common, rare = {}, {}, {}
-    for k, v in type_slots.items():
-        if v in UBIQUITOUS_ANNOTATIONS:
-            ubiquitous[k] = v
-        elif v in COMMON_ANNOTATIONS:
-            common[k] = v
-        else:
-            rare[k] = v
-    return ubiquitous, common, rare
-
-
-def remove_dunder_methods(type_slots):
-    # From dunder several methods, the return type is always known
-    DUNDER_METHODS = [
-        "__init__",
-        "__repr__",
-        "__str__",
-        "__eq__",
-        "__ne__",
-        "__lt__",
-        "__gt__",
-        "__le__",
-        "__ge__",
-        "__len__",
-        "__contains__",
-        "__round__",
-        "__floor__",
-        "__ceil__",
-    ]
-
-    annotations = {
-        k: v
-        for k, v in type_slots.items()
-        if "return" not in k
-        or not any(dunder_method in k for dunder_method in DUNDER_METHODS)
-    }
-    return annotations
-
-
 def calculate_evaluation_statistics(
     file,
     type_slots_groundtruth,
@@ -273,13 +118,6 @@ def calculate_evaluation_statistics(
     annotations_after_ml_search = gather_annotated_slots(type_slots_after_ml_search)
     available_slots = gather_available_slots(type_slots_groundtruth)
 
-    annotations_all = (
-        annotations_after_ml_search
-        or annotations_after_pyright
-        or annotations_groundtruth
-        or {}
-    )
-
     try:
         if len(extra_ml_annotations) > 0:
             new_annotations_percentage = (
@@ -304,14 +142,6 @@ def calculate_evaluation_statistics(
     except ZeroDivisionError:
         avg_time_per_slot = "-"
 
-    # TODO: Move this to check_annotation_correctness.py
-    annotations_filtered = remove_dunder_methods(annotations_all)
-    (
-        annotations_ubiquitous,
-        annotations_common,
-        annotations_rare,
-    ) = gather_common_and_rare_annotations(annotations_filtered)
-
     evaluation_statistics = {
         "file": file,
         "annotations_groundtruth_count": len(annotations_groundtruth),
@@ -334,11 +164,5 @@ def calculate_evaluation_statistics(
         "avg_time_per_slot": avg_time_per_slot,
         "ml_search_time": round(ml_search_time, 2),
         "total_time": round(total_time, 2),
-        "total_annotations_excluding_dunder_methods_count": len(annotations_filtered),
-        "ubiquitous_annotations_excluding_dunder_methods_count": len(
-            annotations_ubiquitous
-        ),
-        "common_annotations_excluding_dunder_methods_count": len(annotations_common),
-        "rare_annotations_excluding_dunder_methods_count": len(annotations_rare),
     }
     return evaluation_statistics

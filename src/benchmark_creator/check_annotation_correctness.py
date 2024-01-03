@@ -5,51 +5,13 @@ import os
 from typing import Dict, List, Optional, Tuple
 import libcst as cst
 import csv
-
 import colorama
 from colorama import Fore
 
+from annotations import TypeSlotsVisitor
 from utils import node_to_code, transform_binary_operations_to_unions
 
 colorama.init(autoreset=True)
-
-
-class TypeAnnotationsCollector(cst.CSTVisitor):
-    def __init__(self) -> None:
-        self.stack: List[Tuple[str, ...]] = []
-        self.all_type_slots: Dict[Tuple[str, ...], str] = {}
-
-    def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
-        self.stack.append(node.name.value)
-        return True
-
-    def leave_ClassDef(self, node: cst.ClassDef) -> None:
-        self.stack.pop()
-
-    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
-        self.stack.append(node.name.value)
-        for param in node.params.params:
-            if param.name.value == "self":
-                continue
-            self.stack.append(param.name.value)
-            annotation = (
-                node_to_code(param.annotation.annotation)
-                if param.annotation is not None
-                else None
-            )
-            self.all_type_slots[tuple(self.stack)] = annotation
-            self.stack.pop()
-
-        self.stack.append("return")
-        return_annotation = (
-            node_to_code(node.returns.annotation) if node.returns is not None else None
-        )
-        self.all_type_slots[tuple(self.stack)] = return_annotation
-        self.stack.pop()
-        return True
-
-    def leave_FunctionDef(self, node: cst.FunctionDef) -> None:
-        self.stack.pop()
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -68,7 +30,7 @@ def parse_arguments() -> argparse.Namespace:
         "--ml-annotated-project-path",
         type=dir_path,
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/type-annotated-source-code",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/type-annotated-source-code-stripped-run",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/type-annotated-source-code-stripped",
         help="The path to the ML annotated project directory.",
         # required=True,
     )
@@ -77,7 +39,7 @@ def parse_arguments() -> argparse.Namespace:
         "--fully-annotated-project-path",
         type=dir_path,
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/fully-annotated",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/fully-annotated",
         help="The path to the fully annotated project directory.",
         # required=True,
     )
@@ -102,6 +64,10 @@ def create_correctness_csv_file():
         "precision",
         "recall",
         # "# total type slots",
+        "# total annotations (excl. dunder methods)",
+        "# ubiquitous annotations (excl. dunder methods)",
+        "# common annotations (excl. dunder methods)",
+        "# rare annotations (excl. dunder methods)",
     ]
     with open(
         "logs-evaluation/type correctness.csv",
@@ -120,6 +86,165 @@ def append_to_correctness_csv_file(correctness_statistics):
     ) as file:
         writer = csv.writer(file)
         writer.writerow(correctness_statistics)
+
+
+def remove_dunder_methods(type_slots):
+    # For several dunder methods, the return type is always known
+    DUNDER_METHODS = [
+        "__init__",
+        "__repr__",
+        "__str__",
+        "__eq__",
+        "__ne__",
+        "__lt__",
+        "__gt__",
+        "__le__",
+        "__ge__",
+        "__len__",
+        "__contains__",
+        "__round__",
+        "__floor__",
+        "__ceil__",
+    ]
+
+    annotations = {
+        k: v
+        for k, v in type_slots.items()
+        if "return" not in k
+        or not any(dunder_method in k for dunder_method in DUNDER_METHODS)
+    }
+    return annotations
+
+
+def gather_common_and_rare_annotations(type_slots):
+    # Top 10
+    # TODO: Most likely should be less specific
+    UBIQUITOUS_ANNOTATIONS = {
+        "str",
+        "int",
+        "List",
+        "List[str]",
+        "bool",
+        "float",
+        "Dict",
+        "Dict[str, Any]",
+        "Dict[str, str]",
+        "Optional[str]",  # Should be Union[str, None] after evaluation transformations
+        # Remove Any and None annotations as in other papers for evaluation
+        "Any",
+        "None",
+    }
+
+    # Top 100 (covers 98%)
+    COMMON_ANNOTATIONS = {
+        "Scope",
+        "<List>",
+        "Mapping",
+        "bytes",
+        "object",
+        "Message",
+        "Tensor",
+        "Parameter",
+        "Event",
+        "GlobalState",
+        "Namespace",
+        "Iterable",
+        "Field",
+        "UserContext",
+        "AsyncIterator",
+        "T",
+        "Variable",
+        "Name",
+        "Path",
+        "Article",
+        "ndarray",
+        "Awaitable",
+        "Settings",
+        "Application",
+        "ArgumentParser",
+        "Iterator",
+        "IO",
+        "Issue",
+        "PartyID",
+        "Module",
+        "Outcome",
+        "Connection",
+        "Item",
+        "BlockHeaderAPI",
+        "DataT",
+        "Literal",
+        "Response",
+        "HttpRequest",
+        "Config",
+        "User",
+        "State",
+        "Address",
+        "Decimal",
+        "Collection",
+        "Task",
+        "Result",
+        "Generator",
+        "_T",
+        "Node",
+        "Container",
+        "Type",
+        "Vertex",
+        "date",
+        "Table",
+        "View",
+        "Candidates",
+        "Configuration",
+        "Expr",
+        "BaseException",
+        "CWLObjectType",
+        "Mock",
+        "Context",
+        "DataFrame",
+        "Logger",
+        "URL",
+        "MagicMock",
+        "Model",
+        "Qubit",
+        "Set",
+        "type",
+        "Token",
+        "Client",
+        "Tuple",
+        "Session",
+        "ID",
+        "Exception",
+        "BytesIO",
+        "Flask",
+        "timedelta",
+        "Source",
+        "UserID",
+        "Request",
+        "Sequence",
+        "datetime",
+        "Nvim",
+        "Root",
+        "Redis",
+        "Callable",
+        "Text",
+        "...",
+    }
+
+    ubiquitous, common, rare = {}, {}, {}
+    for k, v in type_slots.items():
+        if v in UBIQUITOUS_ANNOTATIONS:
+            ubiquitous[k] = v
+        elif v in COMMON_ANNOTATIONS or (
+            "[" in v and v.split("[")[0] in COMMON_ANNOTATIONS
+        ):
+            common[k] = v
+        else:
+            rare[k] = v
+    return ubiquitous, common, rare
+
+
+def filter_out_None_Any(annotations):
+    UNWANTED_VALUES = {"None", "Any"}
+    return {k: v for k, v in annotations.items() if v not in UNWANTED_VALUES}
 
 
 def main():
@@ -141,7 +266,7 @@ def main():
                     fully_annotated_file_path, "r", encoding="utf-8"
                 ).read()
                 fully_annotated_tree = cst.parse_module(fully_annotated_code)
-                visitor_fully_annotated = TypeAnnotationsCollector()
+                visitor_fully_annotated = TypeSlotsVisitor()
                 fully_annotated_tree.visit(visitor_fully_annotated)
             except FileNotFoundError as e:
                 print(e)
@@ -154,7 +279,7 @@ def main():
                     ml_annotated_file_path, "r", encoding="utf-8"
                 ).read()
                 ml_annotated_tree = cst.parse_module(ml_annotated_code)
-                visitor_ml_annotated = TypeAnnotationsCollector()
+                visitor_ml_annotated = TypeSlotsVisitor()
                 ml_annotated_tree.visit(visitor_ml_annotated)
             except FileNotFoundError as e:
                 print(f"{Fore.RED}No ML annotated file found for '{file}'")
@@ -171,21 +296,29 @@ def main():
                 for k, v in visitor_fully_annotated.all_type_slots.items()
                 if v not in UNANNOTATED_GROUND_TRUTHS
             }
+            groundtruth_annotations = remove_dunder_methods(groundtruth_annotations)
+            groundtruth_annotations = filter_out_None_Any(
+                groundtruth_annotations
+            )  # TODO: Not completely certain if this should also be applied to the groundtruth
+
             ml_annotations = {
                 k: v
                 for k, v in visitor_ml_annotated.all_type_slots.items()
-                if k in groundtruth_annotations
+                if k in groundtruth_annotations and v is not None
             }
-            # available_type_slots = {
-            #     k: v
-            #     for k, v in visitor_fully_annotated.all_type_slots.items()
-            #     if v in UNANNOTATED_GROUND_TRUTHS
-            # }
+            ml_annotations = filter_out_None_Any(ml_annotations)
 
-            assert len(groundtruth_annotations) == len(ml_annotations)
+            # TODO: Go over the groundtruth and ml annotations and normalize them like in the TypeT5 paper
 
+            (
+                annotations_ubiquitous,
+                annotations_common,
+                annotations_rare,
+            ) = gather_common_and_rare_annotations(ml_annotations)
+
+            # TODO: See TypeT5 paper section A.5 for type normalization
             for slot, groundtruth_annotation in groundtruth_annotations.items():
-                ml_annotation = ml_annotations[slot]
+                ml_annotation = ml_annotations.get(slot, None)
 
                 # Parse binary operations to unions
                 if "|" in groundtruth_annotation:
@@ -228,6 +361,10 @@ def main():
                 "precision": precision,
                 "recall": recall,
                 # "total_type_slots_count": len(visitor_fully_annotated.all_type_slots),
+                "ml_annotations_count": len(ml_annotations),
+                "ubiquitous_annotations_count": len(annotations_ubiquitous),
+                "common_annotations_count": len(annotations_common),
+                "rare_annotations_count": len(annotations_rare),
             }
             append_to_correctness_csv_file(list(correctness_statistics.values()))
 
