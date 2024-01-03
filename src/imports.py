@@ -3,6 +3,11 @@ import ast
 import logging
 import re
 import fnmatch
+import pkgutil
+import inspect
+import importlib
+import contextlib
+from types import ModuleType
 from typing import Dict, List, Optional, Set, Union
 import typing
 import libcst as cst
@@ -100,9 +105,7 @@ BUILT_IN_TYPES = {
 } | EXCEPTIONS_AND_ERROS
 
 
-def get_classes_from_file(
-    file_path: str, is_virtual_env: bool = False
-) -> Dict[str, str]:
+def get_classes_from_file(file_path: str) -> Dict[str, str]:
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             tree = ast.parse(f.read())
@@ -110,14 +113,12 @@ def get_classes_from_file(
         logger = logging.getLogger(__name__)
         logger.error(e)
 
-    class_dict = {}
+    classes = {}
     for node in ast.walk(tree):
         if not isinstance(node, ast.ClassDef):
             continue
-        if is_virtual_env and node.name.startswith("_"):
-            continue
-        class_dict[node.name] = file_path
-    return class_dict
+        classes[node.name] = file_path
+    return classes
 
 
 def get_all_classes_in_project(
@@ -126,7 +127,7 @@ def get_all_classes_in_project(
     if venv_path is not None:
         venv_directory = venv_path.split(os.sep)[-1]
 
-    classes = {}
+    all_classes = {}
     for root, dirs, files in os.walk(project_path):
         # Ignore the virtual environment directory
         if venv_path and venv_directory in dirs:
@@ -140,8 +141,8 @@ def get_all_classes_in_project(
         for file in files:
             if file.endswith(".py"):
                 file_path = os.path.join(root, file)
-                classes |= get_classes_from_file(file_path, False)
-    return classes
+                all_classes |= get_classes_from_file(file_path)
+    return all_classes
 
 
 def find_site_packages(venv_path):
@@ -150,15 +151,36 @@ def find_site_packages(venv_path):
             return os.path.join(root, dirname)
 
 
-def get_all_classes_in_virtual_environment(venv_path: str) -> Dict[str, str]:
+def get_classes_from_module(module: ModuleType):
     classes = {}
-    packages_path = find_site_packages(venv_path)
-    for root, _, files in os.walk(packages_path):
-        for file in files:
-            if file.endswith(".py"):
-                file_path = os.path.join(root, file)
-                classes |= get_classes_from_file(file_path, True)
+    for name, _ in inspect.getmembers(module, inspect.isclass):
+        if not name.startswith("_"):
+            classes[name] = module.__file__
+
+    if hasattr(module, "__path__"):
+        for _, name, _ in pkgutil.iter_modules(module.__path__):
+            try:
+                submodule = importlib.import_module(f"{module.__name__}.{name}")
+                classes.update(get_classes_from_module(submodule))
+            except Exception:
+                continue
+
     return classes
+
+
+def get_all_classes_in_virtual_environment(venv_path: str):
+    all_classes = {}
+    packages_path = find_site_packages(venv_path)
+    for finder, name, ispkg in pkgutil.iter_modules([packages_path]):
+        try:
+            with contextlib.redirect_stdout(open(os.devnull, "w")):
+                module = importlib.import_module(name)
+        except Exception:
+            continue
+
+        all_classes.update(get_classes_from_module(module))
+
+    return all_classes
 
 
 def _get_import_module_path(
