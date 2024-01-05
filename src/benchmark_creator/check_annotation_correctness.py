@@ -9,7 +9,7 @@ import colorama
 from colorama import Fore
 
 from annotations import TypeSlotsVisitor
-from utils import node_to_code, transform_binary_operations_to_unions
+from type_check import PythonType, parse_type_str, AccuracyMetric
 
 colorama.init(autoreset=True)
 
@@ -57,6 +57,7 @@ def parse_arguments() -> argparse.Namespace:
 def create_correctness_csv_file():
     headers = [
         "file",
+        "metric",
         "# correct",
         "# incorrect",
         "# groundtruth annotations",
@@ -234,7 +235,9 @@ def gather_common_and_rare_annotations(type_slots):
         if v in UBIQUITOUS_ANNOTATIONS:
             ubiquitous[k] = v
         elif v in COMMON_ANNOTATIONS or (
-            "[" in v and v.split("[")[0] in COMMON_ANNOTATIONS
+            # "[" in v and v.split("[")[0] in COMMON_ANNOTATIONS
+            v.head[0]
+            in COMMON_ANNOTATIONS
         ):
             common[k] = v
         else:
@@ -247,18 +250,82 @@ def filter_out_None_Any(annotations):
     return {k: v for k, v in annotations.items() if v not in UNWANTED_VALUES}
 
 
+def calculate_correctness(
+    ml_annotations: Dict[Tuple[str, ...], PythonType],
+    groundtruth_annotations: Dict[Tuple[str, ...], PythonType],
+    metric: AccuracyMetric,
+):
+    assert len(ml_annotations) == len(groundtruth_annotations)
+
+    label_types = list(map(metric.process_type, groundtruth_annotations.values()))
+    pred_types = list(map(metric.process_type, ml_annotations.values()))
+
+    if metric.filter_none_any | metric.filter_rare:
+        filtered_ids = [i for i, t in enumerate(label_types) if metric.to_keep_type(t)]
+        pred_types = [pred_types[i] for i in filtered_ids]
+        label_types = [label_types[i] for i in filtered_ids]
+
+    n_correct = 0
+    n_incorrect = 0
+    n_total = 0
+    incorrect_annotations = []
+
+    for i, p, l in zip(range(len(pred_types)), pred_types, label_types):
+        if p == l:
+            n_correct += 1
+        else:
+            n_incorrect += 1
+            incorrect_annotations.append(
+                (list(groundtruth_annotations.keys())[i], p, l)
+            )
+        n_total += 1
+
+    try:
+        n_all = len(
+            [v for v in ml_annotations.values() if v != parse_type_str("Missing")]
+        )
+        precision = n_correct / n_all
+    except ZeroDivisionError:
+        precision = "-"
+    try:
+        D = len(groundtruth_annotations)
+        recall = n_correct / D
+    except ZeroDivisionError:
+        recall = "-"
+
+    return {
+        "correct_count": n_correct,
+        "incorrect_count": n_incorrect,
+        "groundtruth_annotations_count": n_total,
+        "precision": precision,
+        "recall": recall,
+    }, incorrect_annotations
+
+
 def main():
     args = parse_arguments()
     os.chdir(os.path.abspath(os.path.join(args.fully_annotated_project_path, "..")))
     create_correctness_csv_file()
+
+    metrics = AccuracyMetric.condensed_default_metrics(
+        # TODO: Set more common type names
+        common_type_names=[
+            "int",
+            "str",
+            "bool",
+            "float",
+            "List",
+            "Dict",
+            "Tuple",
+            "Set",
+        ]
+    )
 
     for root, dirs, files in os.walk(args.fully_annotated_project_path):
         python_files = [file for file in files if file.endswith(".py")]
         for file in python_files:
             relative_path = os.path.relpath(root, args.fully_annotated_project_path)
             print(f"Checking file: {os.path.join(relative_path, file)}")
-            n_correct = 0
-            n_incorrect = 0
 
             try:
                 fully_annotated_file_path = os.path.join(root, file)
@@ -292,81 +359,48 @@ def main():
                 "Optional[Incomplete]",
             }
             groundtruth_annotations = {
-                k: v
+                k: parse_type_str(v)
                 for k, v in visitor_fully_annotated.all_type_slots.items()
                 if v not in UNANNOTATED_GROUND_TRUTHS
             }
             groundtruth_annotations = remove_dunder_methods(groundtruth_annotations)
-            groundtruth_annotations = filter_out_None_Any(
-                groundtruth_annotations
-            )  # TODO: Not completely certain if this should also be applied to the groundtruth
 
             ml_annotations = {
-                k: v
+                k: parse_type_str(v) if v is not None else parse_type_str("Missing")
                 for k, v in visitor_ml_annotated.all_type_slots.items()
-                if k in groundtruth_annotations and v is not None
+                if k in groundtruth_annotations
             }
-            ml_annotations = filter_out_None_Any(ml_annotations)
 
-            # TODO: Go over the groundtruth and ml annotations and normalize them like in the TypeT5 paper
+            for metric in metrics:
+                statistics, incorrect_types = calculate_correctness(
+                    ml_annotations, groundtruth_annotations, metric
+                )
 
-            (
-                annotations_ubiquitous,
-                annotations_common,
-                annotations_rare,
-            ) = gather_common_and_rare_annotations(ml_annotations)
-
-            # TODO: See TypeT5 paper section A.5 for type normalization
-            for slot, groundtruth_annotation in groundtruth_annotations.items():
-                ml_annotation = ml_annotations.get(slot, None)
-
-                # Parse binary operations to unions
-                if "|" in groundtruth_annotation:
-                    groundtruth_annotation = transform_binary_operations_to_unions(
-                        cst.parse_expression(groundtruth_annotation)
-                    )
-                if ml_annotation is not None and "|" in ml_annotation:
-                    ml_annotation = transform_binary_operations_to_unions(
-                        cst.parse_expression(ml_annotation)
-                    )
-
-                if ml_annotation == groundtruth_annotation:
-                    n_correct += 1
-                # TODO: elif check for partial match
-                else:
-                    n_incorrect += 1
-                    if args.verbose:
+                if args.verbose:
+                    if len(incorrect_types) > 0:
+                        print(f"Incorrect types according to '{metric}' metric")
+                    for slot, ml_annotation, groundtruth_annotation in incorrect_types:
                         print(f"{Fore.RED}Annotation mismatch for '{slot}':")
                         print(f"{Fore.RED}Fully annotated: {groundtruth_annotation}")
                         print(f"{Fore.RED}ML annotated: {ml_annotation}")
                         print()
 
-            try:
-                n_all = len([v for v in ml_annotations.values() if v is not None])
-                precision = n_correct / n_all
-            except ZeroDivisionError:
-                precision = "-"
-            try:
-                D = len(groundtruth_annotations)
-                recall = n_correct / D
-            except ZeroDivisionError:
-                recall = "-"
+                # (
+                #     annotations_ubiquitous,
+                #     annotations_common,
+                #     annotations_rare,
+                # ) = gather_common_and_rare_annotations(ml_annotations)
 
-            correctness_statistics = {
-                "file": os.path.join(relative_path, file),
-                "correct_count": n_correct,
-                "incorrect_count": n_incorrect,
-                "groundtruth_annotations_count": n_correct + n_incorrect,
-                # "available_slots_count": len(available_type_slots),
-                "precision": precision,
-                "recall": recall,
-                # "total_type_slots_count": len(visitor_fully_annotated.all_type_slots),
-                "ml_annotations_count": len(ml_annotations),
-                "ubiquitous_annotations_count": len(annotations_ubiquitous),
-                "common_annotations_count": len(annotations_common),
-                "rare_annotations_count": len(annotations_rare),
-            }
-            append_to_correctness_csv_file(list(correctness_statistics.values()))
+                correctness_statistics = {
+                    "file": os.path.join(relative_path, file),
+                    "metric": metric.name,
+                    **statistics,
+                    # "ml_annotations_count": len(ml_annotations), #TODO: rEMOVE THE MISSING ONES
+                    # "ubiquitous_annotations_count": len(annotations_ubiquitous),
+                    # "common_annotations_count": len(annotations_common),
+                    # "rare_annotations_count": len(annotations_rare),
+                }
+                append_to_correctness_csv_file(list(correctness_statistics.values()))
 
 
 if __name__ == "__main__":
