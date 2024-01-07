@@ -46,6 +46,13 @@ class StubTransformer(cst.CSTTransformer):
             return False
         return True
 
+    def leave_Param(
+        self, original_node: cst.Param, updated_node: cst.Param
+    ) -> cst.CSTNode:
+        if updated_node.default is not None:
+            return updated_node.with_changes(default=cst.parse_expression("..."))
+        return updated_node
+
     def leave_FunctionDef(
         self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
     ) -> cst.CSTNode:
