@@ -31,7 +31,7 @@ class FakeEditor:
 
     def _get_LSP_client(self) -> LspClient:
         self.process = subprocess.Popen(
-            args=["pyright-langserver", "--stdio"],
+            args=["poetry", "run", "pyright-langserver", "--stdio"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
