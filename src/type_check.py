@@ -48,7 +48,7 @@ class PythonType:
     def head_name(self) -> str:
         """Return the last part of the type head."""
         if self.head == ():
-            return "<empty>"  # SpecialNames.Empty
+            return "<empty>"
         else:
             return self.head[-1]
 

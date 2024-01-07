@@ -1,8 +1,11 @@
 import os
 import csv
+from typing import Tuple
 import libcst as cst
 
 from annotations import TypeSlotsVisitor
+from constants import UBIQUITOUS_ANNOTATIONS, COMMON_ANNOTATIONS
+from type_check import AccuracyMetric, PythonType, normalize_type, parse_type_str
 
 
 INCOMPLETE_TYPE_ANNOTATIONS = {
@@ -41,6 +44,9 @@ def create_evaluation_csv_file():
         "Average time per slot (s)",
         "ML search time (s)",
         "Total time (s)",
+        "# ubiquitous annotations (excl. dunder methods)",
+        "# common annotations (excl. dunder methods)",
+        "# rare annotations (excl. dunder methods)",
     ]
     with open(
         csv_file,
@@ -81,6 +87,45 @@ def gather_annotated_slots(type_slots):
 def gather_available_slots(type_slots):
     annotations = {k: v for k, v in type_slots.items() if v is None}
     return annotations
+
+
+def remove_known_dunder_methods(type_slots):
+    def contains_dunder_string(slot: Tuple[str, ...]) -> bool:
+        return any(s.startswith("__") and s.endswith("__") for s in slot)
+
+    annotations = {
+        k: v
+        for k, v in type_slots.items()
+        if not (contains_dunder_string(k) and "return" in k)
+    }
+    return annotations
+
+
+def normalize_annotations(annotations):
+    normalized_annotations = {
+        k: normalize_type(parse_type_str(v)) for k, v in annotations.items()
+    }
+    return normalized_annotations
+
+
+def split_into_ubiquitous_common_rare(type_slots):
+    def is_ubiquitous_type(t: PythonType) -> bool:
+        return t.head_name() in UBIQUITOUS_ANNOTATIONS and all(
+            map(is_ubiquitous_type, t.args)
+        )
+
+    def is_common_type(t: PythonType) -> bool:
+        return t.head_name() in COMMON_ANNOTATIONS and all(map(is_common_type, t.args))
+
+    ubiquitous, common, rare = {}, {}, {}
+    for k, v in type_slots.items():
+        if is_ubiquitous_type(v):
+            ubiquitous[k] = v
+        elif is_common_type(v):
+            common[k] = v
+        else:
+            rare[k] = v
+    return ubiquitous, common, rare
 
 
 def calculate_evaluation_statistics(
@@ -142,6 +187,20 @@ def calculate_evaluation_statistics(
     except ZeroDivisionError:
         avg_time_per_slot = "-"
 
+    annotations_all = (
+        annotations_after_ml_search
+        or annotations_after_pyright
+        or annotations_groundtruth
+        or {}
+    )
+    annotations_filtered = remove_known_dunder_methods(annotations_all)
+    annotations_normalized = normalize_annotations(annotations_filtered)
+    (
+        annotations_ubiquitous,
+        annotations_common,
+        annotations_rare,
+    ) = split_into_ubiquitous_common_rare(annotations_normalized)
+
     evaluation_statistics = {
         "file": file,
         "annotations_groundtruth_count": len(annotations_groundtruth),
@@ -164,5 +223,8 @@ def calculate_evaluation_statistics(
         "avg_time_per_slot": avg_time_per_slot,
         "ml_search_time": round(ml_search_time, 2),
         "total_time": round(total_time, 2),
+        "ubiquitous_annotations_count": len(annotations_ubiquitous),
+        "common_annotations_count": len(annotations_common),
+        "rare_annotations_count": len(annotations_rare),
     }
     return evaluation_statistics
