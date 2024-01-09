@@ -28,13 +28,14 @@ The more annotations that are already provided in the code, the better the resul
 
 To run this project, perform the following steps and read further:
 
-1. Install [Docker](https://www.docker.com/)
-2. Follow the simple [Type4Py guide](https://github.com/saltudelft/type4py/wiki/Type4Py's-Local-Model) to get the ML model running
-3. Install [Poetry](https://python-poetry.org/)
-4. Pull this project
-5. `cd type-annotation-searcher`
-6. `poetry init`
-7. `cd src`
+1. Install [Node.js](https://nodejs.org/en) (Needed for the Pyright CLI to work)
+2. Install [Docker](https://www.docker.com/)
+3. Follow the simple [Type4Py guide](https://github.com/saltudelft/type4py/wiki/Type4Py's-Local-Model) to get the ML model running
+4. Install [Poetry](https://python-poetry.org/)
+5. Pull this project
+6. `cd type-annotation-searcher`
+7. `poetry init`
+8. `cd src`
 
 ## Pyright annotations for improved performance
 
