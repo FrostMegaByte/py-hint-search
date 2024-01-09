@@ -204,16 +204,14 @@ def add_import_to_searchtree(
     source_code_tree: cst.Module,
     type_annotation: str,
 ):
+    # Handle "Literal" edge case
+    if "Literal" in type_annotation:
+        type_annotation = re.sub(r"Literal\[[^\]]*\]", "Literal", type_annotation)
+
     potential_annotation_imports = list(
         filter(None, re.split("\[|\]|,\s*|\s*\|\s*", type_annotation))
     )
     potential_annotation_imports = list(dict.fromkeys(potential_annotation_imports))
-
-    # Handle "Literal" edge case
-    if "Literal" in potential_annotation_imports:
-        literal_index = potential_annotation_imports.index("Literal")
-        if literal_index + 1 < len(potential_annotation_imports):
-            del potential_annotation_imports[literal_index + 1]
 
     visitor_imports = ImportsCollector()
     source_code_tree.visit(visitor_imports)
