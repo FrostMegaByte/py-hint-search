@@ -41,8 +41,8 @@ To run this project, perform the following steps and read further:
 To get some guaranteed correct type annotations and decrease the number of combinations the search algorithm needs to check, it is possible to let Pyright determine some type annotations beforehand by creating stub files in the 'typings' directory.
 
 This can be performed by running:  
-_(PATH_OF_PROJECT_TO_ANNOTATE should have forward slashes)_  
-`poetry run python pyright_stubs_creator.py --project-dir "PATH_OF_PROJECT_TO_ANNOTATE"`
+_(PATH_OF_PROJECT_PYTHON_FILES_DIRECTORY should have forward slashes)_  
+`poetry run python pyright_typestubs_creator.py --project-path "PATH_OF_PROJECT_PYTHON_FILES_DIRECTORY"`
 
 ## Running the main searching algorithm
 
@@ -50,4 +50,4 @@ The main searching algorithm will fill in empty type slots with different combin
 
 To run the main searching algorithm, enter the command:
 _(PATH_OF_PROJECT_TO_ANNOTATE should have forward slashes)_  
-`poetry run python main.py --project-dir "PATH_OF_PROJECT_TO_ANNOTATE"`
+`poetry run python main.py --project-path "PATH_OF_PROJECT_PYTHON_FILES_DIRECTORY"`

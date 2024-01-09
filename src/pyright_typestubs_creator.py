@@ -22,7 +22,6 @@ def create_pyright_typestubs(project_path: str) -> None:
                 f.write("")
 
         # Create type stubs for all python files in subdirectory
-        # TODO: possibly try to get this to work with "poetry", "run" in front
         subprocess.run(["pyright", "--createstub", subdirectory])
 
         # Remove __init__.py and __init__.pyi file if it didn't exist before
@@ -66,7 +65,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        default="D:/Documents/test/fully-annotated",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/rope",
         help="The path to the project which will be type annotated.",
         # required=True,
     )

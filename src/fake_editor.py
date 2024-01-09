@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import os
 import re
 import subprocess
 import time
@@ -30,12 +31,18 @@ class FakeEditor:
         return cls._self
 
     def _get_LSP_client(self) -> LspClient:
+        project_path = os.getcwd()
+        # Change directory to py-hint-search project to be able to start pyright-langserver
+        current_file_path = os.path.dirname(os.path.realpath(__file__))
+        os.chdir(current_file_path)
+
         self.process = subprocess.Popen(
             args=["poetry", "run", "pyright-langserver", "--stdio"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
+        os.chdir(project_path)
 
         json_rpc_endpoint = JsonRpcEndpoint(self.process.stdin, self.process.stdout)
         lsp_endpoint = LspEndpoint(

@@ -29,7 +29,7 @@ class JsonRpcEndpoint(object):
         self.write_lock = threading.Lock()
 
     @staticmethod
-    def __add_header(json_string):
+    def _add_header(json_string):
         """
         Adds a header for the given json string
 
@@ -48,7 +48,7 @@ class JsonRpcEndpoint(object):
         """
         json_string = json.dumps(message, cls=MyEncoder)
         # print("\nSENDING:", json_string)
-        jsonrpc_req = self.__add_header(json_string)
+        jsonrpc_req = self._add_header(json_string)
         with self.write_lock:
             self.stdin.write(jsonrpc_req.encode())
             self.stdin.flush()
