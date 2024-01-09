@@ -13,96 +13,7 @@ import typing
 import libcst as cst
 import libcst.matchers as m
 
-EXCEPTIONS_AND_ERROS = {
-    "Exception",
-    "BaseException",
-    "GeneratorExit",
-    "KeyboardInterrupt",
-    "SystemExit",
-    "Exception",
-    "StopIteration",
-    "OSError",
-    "EnvironmentError",
-    "IOError",
-    "ArithmeticError",
-    "AssertionError",
-    "AttributeError",
-    "BufferError",
-    "EOFError",
-    "ImportError",
-    "LookupError",
-    "MemoryError",
-    "NameError",
-    "ReferenceError",
-    "RuntimeError",
-    "StopAsyncIteration",
-    "SyntaxError",
-    "SystemError",
-    "TypeError",
-    "ValueError",
-    "FloatingPointError",
-    "OverflowError",
-    "ZeroDivisionError",
-    "ModuleNotFoundError",
-    "IndexError",
-    "KeyError",
-    "UnboundLocalError",
-    "BlockingIOError",
-    "ChildProcessError",
-    "ConnectionError",
-    "BrokenPipeError",
-    "ConnectionAbortedError",
-    "ConnectionRefusedError",
-    "ConnectionResetError",
-    "FileExistsError",
-    "FileNotFoundError",
-    "InterruptedError",
-    "IsADirectoryError",
-    "NotADirectoryError",
-    "PermissionError",
-    "ProcessLookupError",
-    "TimeoutError",
-    "NotImplementedError",
-    "RecursionError",
-    "IndentationError",
-    "TabError",
-    "UnicodeError",
-    "UnicodeDecodeError",
-    "UnicodeEncodeError",
-    "UnicodeTranslateError",
-    "Warning",
-    "UserWarning",
-    "DeprecationWarning",
-    "SyntaxWarning",
-    "RuntimeWarning",
-    "FutureWarning",
-    "PendingDeprecationWarning",
-    "ImportWarning",
-    "UnicodeWarning",
-    "BytesWarning",
-    "ResourceWarning",
-}
-
-BUILT_IN_TYPES = {
-    "bool",
-    "int",
-    "float",
-    "complex",
-    "str",
-    "list",
-    "tuple",
-    "dict",
-    "set",
-    "frozenset",
-    "range",
-    "bytes",
-    "bytearray",
-    "memoryview",
-    "None",
-    "object",
-    "type",
-    "",
-} | EXCEPTIONS_AND_ERROS
+from constants import BUILT_IN_TYPES
 
 
 def get_classes_from_file(file_path: str) -> Dict[str, str]:
@@ -221,7 +132,7 @@ def add_import_to_searchtree(
 
     unknown_annotations = set()
     for annotation in potential_annotation_imports:
-        if annotation in BUILT_IN_TYPES:
+        if annotation in BUILT_IN_TYPES or annotation == "":
             continue
         elif annotation in visitor_imports.existing_import_items:
             continue
@@ -231,6 +142,8 @@ def add_import_to_searchtree(
             transformer = ImportInserter(f"from typing import {annotation}")
             source_code_tree = source_code_tree.visit(transformer)
         elif annotation == "Unknown":
+            # If Pyright cannot infer the type, it occasionally uses "Unknown" as the type.
+            # Although not officially supported, it is similar to "Any" and thus we need a TypeAlias for it.
             transformer_alias = TypeAliasInserter("Unknown: TypeAlias = Any")
             source_code_tree = source_code_tree.visit(transformer_alias)
             if "TypeAlias" not in visitor_imports.existing_import_items:
