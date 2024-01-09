@@ -99,7 +99,7 @@ COMMON_ANNOTATIONS = UBIQUITOUS_ANNOTATIONS | {
     "Iterator",
     "Event",
     "Config",
-    "_MakeClient",
+    "LiteralString",
     "Address",
     "Expr",
     "timedelta",
