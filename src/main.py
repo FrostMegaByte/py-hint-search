@@ -53,16 +53,19 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/fully-annotated",
-        help="The path to the project which will be type annotated.",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/rope",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/fully-annotated",
+        default="D:/Documents/test/langchain-master/libs/langchain/langchain",
+        help="The path to the python files directory of the project that will be type annotated.",
         # required=True,
     )
     parser.add_argument(
         "--venv-path",
         type=dir_path,
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/.venv",
-        help="The path to the virtual environment.",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/.venv",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/.venv",
+        default="D:/Documents/test/langchain-master/libs/langchain/.venv",
+        help="The path to the virtual environment of the project that will be type annotated.",
     )
     parser.add_argument(
         "--top-k",
@@ -102,7 +105,7 @@ def main(args: argparse.Namespace) -> None:
     )
     PYRIGHT_ANNOTATIONS_EXIST = os.path.isdir(stubs_path_pyright)
 
-    typed_directory = "type-annotated"
+    typed_directory = f"type-annotated-top{args.top_k}"
     typed_path = os.path.abspath(os.path.join(working_directory, typed_directory))
 
     print("Gathering all local classes in the project...")
@@ -114,7 +117,7 @@ def main(args: argparse.Namespace) -> None:
         ALL_PROJECT_CLASSES = ALL_VENV_CLASSES | ALL_PROJECT_CLASSES
 
     editor.start(root_uri)
-    create_evaluation_csv_file()
+    create_evaluation_csv_file(args.top_k)
 
     # Walk through project directories and type annotate all python files
     for root, dirs, files in os.walk(args.project_path):
@@ -138,9 +141,7 @@ def main(args: argparse.Namespace) -> None:
             start_time_total = time.perf_counter()
 
             type_annotated_file = os.path.abspath(
-                os.path.join(
-                    working_directory, "type-annotated", relative_path, file + "i"
-                )
+                os.path.join(typed_path, relative_path, file + "i")
             )
             if os.path.exists(type_annotated_file):
                 print(f"{Fore.GREEN}{file} already annotated. Skipping...\n")
@@ -277,7 +278,9 @@ def main(args: argparse.Namespace) -> None:
                         finish_time_ml_search,
                         finish_time_total,
                     )
-                    append_to_evaluation_csv_file(list(evaluation_statistics.values()))
+                    append_to_evaluation_csv_file(
+                        list(evaluation_statistics.values()), args.top_k
+                    )
 
                     for k, v in evaluation_statistics.items():
                         evaluation_logger.info(f"{k}: {v}")
@@ -324,7 +327,9 @@ def main(args: argparse.Namespace) -> None:
                 finish_time_ml_search,
                 finish_time_total,
             )
-            append_to_evaluation_csv_file(list(evaluation_statistics.values()))
+            append_to_evaluation_csv_file(
+                list(evaluation_statistics.values()), args.top_k
+            )
 
             for k, v in evaluation_statistics.items():
                 evaluation_logger.info(f"{k}: {v}")
@@ -344,7 +349,7 @@ if __name__ == "__main__":
     remove_pyright_config_file(args.project_path)
 
     # try:
-    #     create_pyright_config_file(args.project_path)
+    #     create_pyright_config_file(args.project_path, args.venv_path)
     #     logger = create_main_logger()
     #     evaluation_logger = create_evaluation_logger()
     #     main(args)

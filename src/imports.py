@@ -253,11 +253,3 @@ def handle_binary_operation_imports(
     transformer = ImportInserter(import_statement)
     source_code_tree = source_code_tree.visit(transformer)
     return source_code_tree
-
-
-# get_all_classes_in_project(
-#     "D:/Documents/test2/plagiarism-checker",
-# )
-# get_all_classes_in_virtual_environment(
-#     "D:/Documents/test2/plagiarism-checker/t/.venv",
-# )

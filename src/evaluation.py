@@ -25,8 +25,8 @@ def gather_all_type_slots(source_code_tree: cst.Module):
     return all_type_slots
 
 
-def create_evaluation_csv_file():
-    csv_file = "logs-evaluation/evaluation statistics.csv"
+def create_evaluation_csv_file(top_k: int) -> None:
+    csv_file = f"logs-evaluation/evaluation statistics-top{top_k}.csv"
     if os.path.exists(csv_file):
         return
 
@@ -57,9 +57,9 @@ def create_evaluation_csv_file():
         writer.writerow(headers)
 
 
-def append_to_evaluation_csv_file(statistics):
+def append_to_evaluation_csv_file(statistics, top_k: int) -> None:
     with open(
-        "logs-evaluation/evaluation statistics.csv",
+        f"logs-evaluation/evaluation statistics-top{top_k}.csv",
         "a",
         newline="",
     ) as file:
