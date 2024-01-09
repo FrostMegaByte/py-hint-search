@@ -97,7 +97,13 @@ def remove_pyright_config_file(project_path: str) -> None:
 def main(args: argparse.Namespace) -> None:
     editor = FakeEditor()
     working_directory = os.getcwd()
-    root_uri = f"file:///{args.project_path}"
+
+    project_path = (
+        args.project_path.lstrip("/")
+        if args.project_path.startswith("/")
+        else args.project_path
+    )
+    root_uri = f"file:///{project_path}"
 
     stubs_directory_pyright = "typings"
     stubs_path_pyright = os.path.abspath(

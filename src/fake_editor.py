@@ -95,7 +95,10 @@ class FakeEditor:
         time.sleep(1)
 
     def open_file(self, file_path: str) -> None:
-        uri = f"file:///{file_path}"
+        uri_file_path = (
+            file_path.lstrip("/") if file_path.startswith("/") else file_path
+        )
+        uri = f"file:///{uri_file_path}"
         try:
             python_code = open(file_path, "r", encoding="utf-8").read()
         except Exception as e:
