@@ -101,7 +101,7 @@ def _get_import_module_path(
         project_classes[annotation],
         current_file,
     )
-    path_list = relative_path.removesuffix(".py").split("\\")
+    path_list = relative_path.removesuffix(".py").split(os.sep)
     if "site-packages" in path_list:
         path_list = path_list[path_list.index("site-packages") + 1 :]
     path_list = [x for x in path_list if x != ".."]
