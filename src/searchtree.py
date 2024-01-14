@@ -77,10 +77,10 @@ def depth_first_traversal(
     while 0 <= layer_index < number_of_type_slots:
         if time.time() - start_time > 5 * 60:
             print(
-                f"{Fore.RED}Timeout after 5 minutes. File takes too long to process. Likely something wrong with backtracking and filling in the slots..."
+                f"{Fore.RED}Timeout after 5 minutes. File takes too long to process. Likely backtracking is taking too long..."
             )
             logger.error(
-                "Timeout after 5 minutes. File takes too long to process. Likely something wrong with backtracking and filling in the slots..."
+                "Timeout after 5 minutes. File takes too long to process. Likely backtracking is taking too long..."
             )
             return original_source_code_tree
 
