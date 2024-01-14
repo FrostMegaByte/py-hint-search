@@ -26,7 +26,7 @@ def gather_all_type_slots(source_code_tree: cst.Module):
 
 
 def create_evaluation_csv_file(top_k: int) -> None:
-    csv_file = f"logs-evaluation/evaluation statistics-top{top_k}.csv"
+    csv_file = f"logs-evaluation/evaluation-statistics-top{top_k}.csv"
     if os.path.exists(csv_file):
         return
 
@@ -44,9 +44,15 @@ def create_evaluation_csv_file(top_k: int) -> None:
         "Average time per slot (s)",
         "ML search time (s)",
         "Total time (s)",
-        "# ubiquitous annotations (excl. dunder methods)",
-        "# common annotations (excl. dunder methods)",
-        "# rare annotations (excl. dunder methods)",
+        "# ubiquitous annotations (extra Pyright)",
+        "# common annotations (extra Pyright)",
+        "# rare annotations (extra Pyright)",
+        "# ubiquitous annotations (extra ML)",
+        "# common annotations (extra ML)",
+        "# rare annotations (extra ML)",
+        "# ubiquitous annotations (all)",
+        "# common annotations (all)",
+        "# rare annotations (all)",
     ]
     with open(
         csv_file,
@@ -59,7 +65,7 @@ def create_evaluation_csv_file(top_k: int) -> None:
 
 def append_to_evaluation_csv_file(statistics, top_k: int) -> None:
     with open(
-        f"logs-evaluation/evaluation statistics-top{top_k}.csv",
+        f"logs-evaluation/evaluation-statistics-top{top_k}.csv",
         "a",
         newline="",
     ) as file:
@@ -128,6 +134,13 @@ def split_into_ubiquitous_common_rare(type_slots):
     return ubiquitous, common, rare
 
 
+def gather_ubiquitous_common_rare(annotations):
+    annotations_filtered = remove_known_dunder_methods(annotations)
+    annotations_normalized = normalize_annotations(annotations_filtered)
+    ubiquitous, common, rare = split_into_ubiquitous_common_rare(annotations_normalized)
+    return ubiquitous, common, rare
+
+
 def calculate_evaluation_statistics(
     file,
     type_slots_groundtruth,
@@ -187,19 +200,28 @@ def calculate_evaluation_statistics(
     except ZeroDivisionError:
         avg_time_per_slot = "-"
 
+    (
+        extra_pyright_annotations_ubiquitous,
+        extra_pyright_annotations_common,
+        extra_pyright_annotations_rare,
+    ) = gather_ubiquitous_common_rare(extra_pyright_annotations)
+    (
+        extra_ml_annotations_ubiquitous,
+        extra_ml_annotations_common,
+        extra_ml_annotations_rare,
+    ) = gather_ubiquitous_common_rare(extra_ml_annotations)
+
     annotations_all = (
         annotations_after_ml_search
         or annotations_after_pyright
         or annotations_groundtruth
         or {}
     )
-    annotations_filtered = remove_known_dunder_methods(annotations_all)
-    annotations_normalized = normalize_annotations(annotations_filtered)
     (
-        annotations_ubiquitous,
-        annotations_common,
-        annotations_rare,
-    ) = split_into_ubiquitous_common_rare(annotations_normalized)
+        all_annotations_ubiquitous,
+        all_annotations_common,
+        all_annotations_rare,
+    ) = gather_ubiquitous_common_rare(annotations_all)
 
     evaluation_statistics = {
         "file": file,
@@ -223,8 +245,18 @@ def calculate_evaluation_statistics(
         "avg_time_per_slot": avg_time_per_slot,
         "ml_search_time": round(ml_search_time, 2),
         "total_time": round(total_time, 2),
-        "ubiquitous_annotations_count": len(annotations_ubiquitous),
-        "common_annotations_count": len(annotations_common),
-        "rare_annotations_count": len(annotations_rare),
+        "ubiquitous_annotations_pyright_count": len(
+            extra_pyright_annotations_ubiquitous
+        ),
+        "common_annotations_pyright_count": len(extra_pyright_annotations_common),
+        "rare_annotations_pyright_count": len(extra_pyright_annotations_rare),
+        "ubiquitous_annotations_ml_count": len(
+            extra_ml_annotations_ubiquitous,
+        ),
+        "common_annotations_ml_count": len(extra_ml_annotations_common),
+        "rare_annotations_ml_count": len(extra_ml_annotations_rare),
+        "ubiquitous_annotations_all_count": len(all_annotations_ubiquitous),
+        "common_annotations_all_count": len(all_annotations_common),
+        "rare_annotations_all_count": len(all_annotations_rare),
     }
     return evaluation_statistics
