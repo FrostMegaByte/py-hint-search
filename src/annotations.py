@@ -279,6 +279,13 @@ class BinaryOperationToUnionTransformer(cst.CSTTransformer):
     def leave_BinaryOperation(
         self, original_node: cst.BinaryOperation, updated_node: cst.BinaryOperation
     ) -> cst.Subscript:
+        if m.matches(updated_node.left, m.Ellipsis()) or m.matches(
+            updated_node.right, m.Ellipsis()
+        ):
+            raise Exception(
+                "Ellipsis as the main annotation. Very likely from a Pyright stub file. Recommended: Find the corresponding stub file and manually remove the '...' annotation from the union (e.g. int | List[str] | ...)."
+            )
+
         if updated_node.left.value == "None":
             self.parent.should_import_optional = True
             return cst.Subscript(
