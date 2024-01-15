@@ -53,18 +53,22 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/fully-annotated",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/django-correct/stripped",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/macro-benchmark/bpytop",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/rope",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/fully-annotated",
-        default="D:/Documents/test/langchain-master/libs/langchain/langchain",
+        # default="D:/Documents/test/langchain-master/libs/langchain/langchain",
         help="The path to the python files directory of the project that will be type annotated.",
         # required=True,
     )
     parser.add_argument(
         "--venv-path",
         type=dir_path,
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/.venv",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/django-correct/.venv",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/macro-benchmark/bpytop/.venv",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/.venv",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/.venv",
-        default="D:/Documents/test/langchain-master/libs/langchain/.venv",
+        # default="D:/Documents/test/langchain-master/libs/langchain/.venv",
         help="The path to the virtual environment of the project that will be type annotated.",
     )
     parser.add_argument(
@@ -95,24 +99,13 @@ def remove_pyright_config_file(project_path: str) -> None:
 
 
 def main(args: argparse.Namespace) -> None:
-    editor = FakeEditor()
     working_directory = os.getcwd()
-
     project_path = (
         args.project_path.lstrip("/")
         if args.project_path.startswith("/")
         else args.project_path
     )
     root_uri = f"file:///{project_path}"
-
-    stubs_directory_pyright = "typings"
-    stubs_path_pyright = os.path.abspath(
-        os.path.join(working_directory, stubs_directory_pyright)
-    )
-    PYRIGHT_ANNOTATIONS_EXIST = os.path.isdir(stubs_path_pyright)
-
-    typed_directory = f"type-annotated-top{args.top_k}"
-    typed_path = os.path.abspath(os.path.join(working_directory, typed_directory))
 
     print("Gathering all local classes in the project...")
     ALL_PROJECT_CLASSES = get_all_classes_in_project(args.project_path, args.venv_path)
@@ -122,6 +115,25 @@ def main(args: argparse.Namespace) -> None:
         ALL_VENV_CLASSES = get_all_classes_in_virtual_environment(args.venv_path)
         ALL_PROJECT_CLASSES = ALL_VENV_CLASSES | ALL_PROJECT_CLASSES
 
+    stubs_directory_pyright = "typings"
+    stubs_path_pyright = os.path.abspath(
+        os.path.join(working_directory, stubs_directory_pyright)
+    )
+    PYRIGHT_ANNOTATIONS_EXIST = os.path.isdir(stubs_path_pyright)
+    if not PYRIGHT_ANNOTATIONS_EXIST:
+        print(
+            f"{Fore.YELLOW}No Pyright stubs found. Skipping Pyright annotations...\n"
+            + "Recommended: Run command to create Pyright stubs\n"
+        )
+        logger.warning(
+            "No Pyright stubs found. Skipping Pyright annotations... "
+            + "Recommended: Run command to create Pyright stubs"
+        )
+
+    typed_directory = f"type-annotated-top{args.top_k}"
+    typed_path = os.path.abspath(os.path.join(working_directory, typed_directory))
+
+    editor = FakeEditor()
     editor.start(root_uri)
     create_evaluation_csv_file(args.top_k)
 
