@@ -213,7 +213,7 @@ def main():
 
                 if args.verbose:
                     if len(incorrect_types) > 0:
-                        print(f"Incorrect types according to '{metric}' metric")
+                        print(f"Incorrect types according to '{metric.name}' metric")
                     for slot, ml_annotation, groundtruth_annotation in incorrect_types:
                         print(f"{Fore.RED}Annotation mismatch for '{slot}':")
                         print(f"{Fore.RED}Fully annotated: {groundtruth_annotation}")
