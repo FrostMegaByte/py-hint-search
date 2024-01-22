@@ -14,7 +14,7 @@ from imports import (
     get_all_classes_in_virtual_environment,
     handle_binary_operation_imports,
 )
-from api_ml_model import Type4PyException, get_ordered_type4py_predictions
+from api_ml_model import TypeT5Exception, get_typet5_predictions
 from annotations import (
     PyrightTypeAnnotationCollector,
     PyrightTypeAnnotationTransformer,
@@ -53,22 +53,14 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/fully-annotated",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/django-correct/stripped",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/macro-benchmark/bpytop",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/rope",
-        # default="D:/Documents/test/langchain-master/libs/langchain/langchain",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/requests-correct/fully-annotated",
         help="The path to the python files directory of the project that will be type annotated.",
         # required=True,
     )
     parser.add_argument(
         "--venv-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/.venv",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/django-correct/.venv",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/macro-benchmark/bpytop/.venv",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/.venv",
-        # default="D:/Documents/test/langchain-master/libs/langchain/.venv",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/.venv",
         help="The path to the virtual environment of the project that will be type annotated.",
     )
     parser.add_argument(
@@ -115,6 +107,12 @@ def main(args: argparse.Namespace) -> None:
         ALL_VENV_CLASSES = get_all_classes_in_virtual_environment(args.venv_path)
         ALL_PROJECT_CLASSES = ALL_VENV_CLASSES | ALL_PROJECT_CLASSES
 
+    try:
+        ml_predictions_per_file = get_typet5_predictions()
+    except TypeT5Exception:
+        print(f"{Fore.RED}Project cannot be parsed by TypeT5...\n")
+        logger.error("Project cannot be parsed by TypeT5...")
+
     stubs_directory_pyright = "typings"
     stubs_path_pyright = os.path.abspath(
         os.path.join(working_directory, stubs_directory_pyright)
@@ -130,7 +128,7 @@ def main(args: argparse.Namespace) -> None:
             + "Recommended: Run command to create Pyright stubs"
         )
 
-    typed_directory = f"type-annotated-top{args.top_k}"
+    typed_directory = f"type-annotated-top{args.top_k}-typet5"
     typed_path = os.path.abspath(os.path.join(working_directory, typed_directory))
 
     editor = FakeEditor()
@@ -252,19 +250,19 @@ def main(args: argparse.Namespace) -> None:
 
             # Get ML type annotation predictions
             start_time_ml_search = time.perf_counter()
-            try:
-                ml_predictions = []
-                if len(visitor_type_slots.available_slots) > 0:
-                    ml_predictions = get_ordered_type4py_predictions(
-                        source_code_tree.code
-                    )
-            except Type4PyException:
+            relative_file_name = os.path.normpath(
+                os.path.join(relative_path, file)
+            ).replace("\\", "/")
+            if relative_file_name not in ml_predictions_per_file:
                 print(
-                    f"{Fore.YELLOW}'{file}' cannot be parsed by Type4Py. Skipping...\n"
+                    f"{Fore.YELLOW}'{file}' doesn't have TypeT5 type annotation predictions. Skipping...\n"
                 )
-                logger.warning(f"'{file}' cannot be parsed by Type4Py. Skipping...")
-                editor.close_file()
+                logger.warning(
+                    f"'{file}' doesn't have TypeT5 type annotation predictions. Skipping..."
+                )
                 continue
+
+            ml_predictions = ml_predictions_per_file[relative_file_name]
 
             # Transform the predictions and filter out already type annotated parameters and return types
             search_tree_layers = transform_predictions_to_slots_to_search(
