@@ -67,8 +67,14 @@ def parse_arguments() -> argparse.Namespace:
         "--top-k",
         type=int,
         choices=range(1, 5),
-        default="3",
+        default="1",
         help="Try the top k type annotation predictions.",
+    )
+    parser.add_argument(
+        "--keep-source-code-files",
+        type=bool,
+        default=True,
+        help="Keep or discard the source code files after type annotating them.",
     )
 
     return parser.parse_args()
@@ -108,6 +114,7 @@ def main(args: argparse.Namespace) -> None:
         ALL_PROJECT_CLASSES = ALL_VENV_CLASSES | ALL_PROJECT_CLASSES
 
     try:
+        print("Predicting type annotations with TypeT5. This will take a long time...")
         ml_predictions_per_file = get_typet5_predictions()
     except TypeT5Exception:
         print(f"{Fore.RED}Project cannot be parsed by TypeT5...\n")
@@ -273,7 +280,13 @@ def main(args: argparse.Namespace) -> None:
             if number_of_type_slots_to_fill == 0:
                 if added_extra_pyright_annotations:
                     # There was no ML search work to do, but we added extra Pyright annotations
-                    create_stub_file(source_code_tree, typed_path, relative_path, file)
+                    create_stub_file(
+                        source_code_tree,
+                        typed_path,
+                        relative_path,
+                        file,
+                        args.keep_source_code_files,
+                    )
                     print(
                         f"{Fore.GREEN}'{file}' completed with additional Pyright annotations!\n"
                     )
@@ -329,7 +342,11 @@ def main(args: argparse.Namespace) -> None:
             type_slots_after_ml = gather_all_type_slots(type_annotated_source_code_tree)
 
             create_stub_file(
-                type_annotated_source_code_tree, typed_path, relative_path, file
+                type_annotated_source_code_tree,
+                typed_path,
+                relative_path,
+                file,
+                args.keep_source_code_files,
             )
             editor.close_file()
 
