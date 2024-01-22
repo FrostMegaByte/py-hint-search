@@ -107,7 +107,7 @@ def create_stub_file(
     typed_path: str,
     relative_path: str,
     file_name: str,
-    remove_source_code_file: bool = False,
+    keep_source_code_file: bool = True,
 ) -> None:
     # Write the type annotated source code to a file
     output_typed_source_directory = os.path.abspath(
@@ -127,6 +127,6 @@ def create_stub_file(
         os.path.join(output_typed_directory, file_name + "i"), "w", encoding="utf-8"
     ).write(type_annotated_stub_tree.code)
 
-    if remove_source_code_file:
+    if not keep_source_code_file:
         os.remove(source_code_file)
         os.rmdir(output_typed_source_directory)

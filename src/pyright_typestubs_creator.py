@@ -65,9 +65,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/rope",
         help="The path to the project which will be type annotated.",
-        # required=True,
+        required=True,
     )
 
     return parser.parse_args()
@@ -76,3 +75,4 @@ def parse_arguments() -> argparse.Namespace:
 if __name__ == "__main__":
     args = parse_arguments()
     create_pyright_typestubs(args.project_path)
+    # TODO: Remove decorators from type stubs as they can break libcst's parsing of the Pyright stubs

@@ -53,18 +53,18 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/fully-annotated",
+        default="D:/Documents/test/pygame-main/src_py",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/django-correct/stripped",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/macro-benchmark/bpytop",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/rope",
         # default="D:/Documents/test/langchain-master/libs/langchain/langchain",
-        help="The path to the python files directory of the project that will be type annotated.",
+        help="The path to the Python files directory of the project that will be type annotated.",
         # required=True,
     )
     parser.add_argument(
         "--venv-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/.venv",
+        # default="D:/Documents/test/onnx-main/.venv",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/django-correct/.venv",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/macro-benchmark/bpytop/.venv",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/.venv",
@@ -76,7 +76,13 @@ def parse_arguments() -> argparse.Namespace:
         type=int,
         choices=range(1, 5),
         default="3",
-        help="Try the top k type annotation predictions.",
+        help="Try the top-k type annotation predictions during search.",
+    )
+    parser.add_argument(
+        "--keep-source-code-files",
+        type=bool,
+        default=True,
+        help="Keep or discard the source code files after type annotating them.",
     )
 
     return parser.parse_args()
@@ -116,6 +122,7 @@ def main(args: argparse.Namespace) -> None:
         ALL_PROJECT_CLASSES = ALL_VENV_CLASSES | ALL_PROJECT_CLASSES
 
     stubs_directory_pyright = "typings"
+    # TODO: Find typings directory for Pyright like the site-packages
     stubs_path_pyright = os.path.abspath(
         os.path.join(working_directory, stubs_directory_pyright)
     )
@@ -275,7 +282,13 @@ def main(args: argparse.Namespace) -> None:
             if number_of_type_slots_to_fill == 0:
                 if added_extra_pyright_annotations:
                     # There was no ML search work to do, but we added extra Pyright annotations
-                    create_stub_file(source_code_tree, typed_path, relative_path, file)
+                    create_stub_file(
+                        source_code_tree,
+                        typed_path,
+                        relative_path,
+                        file,
+                        args.keep_source_code_files,
+                    )
                     print(
                         f"{Fore.GREEN}'{file}' completed with additional Pyright annotations!\n"
                     )
@@ -331,7 +344,11 @@ def main(args: argparse.Namespace) -> None:
             type_slots_after_ml = gather_all_type_slots(type_annotated_source_code_tree)
 
             create_stub_file(
-                type_annotated_source_code_tree, typed_path, relative_path, file
+                type_annotated_source_code_tree,
+                typed_path,
+                relative_path,
+                file,
+                args.keep_source_code_files,
             )
             editor.close_file()
 
