@@ -25,8 +25,8 @@ def gather_all_type_slots(source_code_tree: cst.Module):
     return all_type_slots
 
 
-def create_evaluation_csv_file(top_k: int) -> None:
-    csv_file = f"logs-evaluation/evaluation-statistics-top{top_k}.csv"
+def create_evaluation_csv_file(top_n: int) -> None:
+    csv_file = f"logs-evaluation/evaluation-statistics-top{top_n}.csv"
     if os.path.exists(csv_file):
         return
 
@@ -44,6 +44,8 @@ def create_evaluation_csv_file(top_k: int) -> None:
         "Average time per slot (s)",
         "ML search time (s)",
         "Total time (s)",
+        "Peak memory usage Pyright (mb)",
+        "Peak memory usage ML (mb)",
         "# ubiquitous annotations (extra Pyright)",
         "# common annotations (extra Pyright)",
         "# rare annotations (extra Pyright)",
@@ -63,9 +65,9 @@ def create_evaluation_csv_file(top_k: int) -> None:
         writer.writerow(headers)
 
 
-def append_to_evaluation_csv_file(statistics, top_k: int) -> None:
+def append_to_evaluation_csv_file(statistics, top_n: int) -> None:
     with open(
-        f"logs-evaluation/evaluation-statistics-top{top_k}.csv",
+        f"logs-evaluation/evaluation-statistics-top{top_n}.csv",
         "a",
         newline="",
     ) as file:
@@ -149,6 +151,8 @@ def calculate_evaluation_statistics(
     number_of_ml_evaluated_type_slots,
     ml_search_time,
     total_time,
+    peak_memory_usage_pyright,
+    peak_memory_usage_ml,
 ):
     if len(type_slots_after_pyright) > 0 and len(type_slots_after_ml_search) > 0:
         extra_pyright_annotations = calculate_extra_annotations(
@@ -245,6 +249,10 @@ def calculate_evaluation_statistics(
         "avg_time_per_slot": avg_time_per_slot,
         "ml_search_time": round(ml_search_time, 2),
         "total_time": round(total_time, 2),
+        "peak_memory_usage_pyright_mb": round(
+            peak_memory_usage_pyright / (1024 * 1024), 2
+        ),
+        "peak_memory_usage_ml_mb": round(peak_memory_usage_ml / (1024 * 1024), 2),
         "ubiquitous_annotations_pyright_count": len(
             extra_pyright_annotations_ubiquitous
         ),

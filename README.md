@@ -53,7 +53,7 @@ pip install .
 To get some guaranteed correct type annotations and decrease the number of combinations the search algorithm needs to check, it is possible to let Pyright determine some type annotations beforehand by creating stub files in the 'typings' directory.
 
 This can be performed by running:  
-_(PATH_OF_PROJECT_PYTHON_FILES_DIRECTORY should have forward slashes)_
+_(`PATH_OF_PROJECT_PYTHON_FILES_DIRECTORY` should have forward slashes)_
 
 ```bash
 poetry run python pyright_typestubs_creator.py --project-path "PATH_OF_PROJECT_PYTHON_FILES_DIRECTORY"
@@ -77,5 +77,5 @@ The following options can be specified in the command:
 
 - `--project-path` (The path to the Python files directory of the project that will be type annotated)
 - `--venv-path` (The path to the virtual environment of the project that will be type annotated)
-- `--top-k` (Try the top-k type annotation predictions during search)
+- `--top-n` (Try the top-n type annotation predictions during search)
 - `--keep-source-code-files` (Keep or discard the source code files after type annotating them)
