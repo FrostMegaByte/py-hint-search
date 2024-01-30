@@ -34,6 +34,7 @@ from evaluation import (
     calculate_evaluation_statistics,
     create_evaluation_csv_file,
     gather_all_type_slots,
+    has_extra_annotations,
 )
 
 colorama.init(autoreset=True)
@@ -55,7 +56,7 @@ def parse_arguments() -> argparse.Namespace:
         "--project-path",
         type=dir_path,
         # default="D:/Documents/test/pygame-main/src_py",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/fully-annotated",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/fully-annotated",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/macro-benchmark/bpytop",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/rope",
         # default="D:/Documents/test/langchain-master/libs/langchain/langchain",
@@ -66,7 +67,7 @@ def parse_arguments() -> argparse.Namespace:
         "--venv-path",
         type=dir_path,
         # default="D:/Documents/test/onnx-main/.venv",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/.venv",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/django-correct/.venv",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/macro-benchmark/bpytop/.venv",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/.venv",
         # default="D:/Documents/test/langchain-master/libs/langchain/.venv",
@@ -189,7 +190,6 @@ def main(args: argparse.Namespace) -> None:
             type_slots_groundtruth = gather_all_type_slots(source_code_tree)
 
             # Add type annotations inferred by Pyright
-            added_extra_pyright_annotations = False
             if PYRIGHT_ANNOTATIONS_EXIST:
                 tracemalloc.start()
                 relative_stub_subdirectory = os.path.relpath(root, working_directory)
@@ -228,12 +228,10 @@ def main(args: argparse.Namespace) -> None:
                         visitor_pyright.annotations, all_unknown_annotations
                     )
                     source_code_tree = source_code_tree.visit(transformer_pyright)
-                    type_slots_after_pyright = gather_all_type_slots(source_code_tree)
+
                     editor.change_file(source_code_tree.code, None)
                     editor.has_diagnostic_error(at_start=True)
-                    added_extra_pyright_annotations = (
-                        type_slots_after_pyright != type_slots_groundtruth
-                    )
+
                 except FileNotFoundError:
                     print(
                         f"{Fore.YELLOW}'{file}' has no related Pyright stub file, but it should have one for better performance.\n"
@@ -246,6 +244,11 @@ def main(args: argparse.Namespace) -> None:
                 finally:
                     _, peak_memory_usage_pyright = tracemalloc.get_traced_memory()
                     tracemalloc.stop()
+
+            type_slots_after_pyright = gather_all_type_slots(source_code_tree)
+            added_extra_pyright_annotations = has_extra_annotations(
+                type_slots_groundtruth, type_slots_after_pyright
+            )
 
             transformer_incomplete = RemoveIncompleteAnnotations()
             source_code_tree = source_code_tree.visit(transformer_incomplete)
@@ -304,10 +307,11 @@ def main(args: argparse.Namespace) -> None:
                     editor.close_file()
 
                     finish_time_ml_search = 0
-                    type_slots_after_ml = {}
                     finish_time_total = time.perf_counter() - start_time_total
                     _, peak_memory_usage_ml = tracemalloc.get_traced_memory()
                     tracemalloc.stop()
+                    type_slots_after_ml = gather_all_type_slots(source_code_tree)
+
                     evaluation_statistics = calculate_evaluation_statistics(
                         os.path.join(relative_path, file),
                         type_slots_groundtruth,
@@ -369,7 +373,7 @@ def main(args: argparse.Namespace) -> None:
             evaluation_statistics = calculate_evaluation_statistics(
                 os.path.join(relative_path, file),
                 type_slots_groundtruth,
-                type_slots_after_pyright if added_extra_pyright_annotations else {},
+                type_slots_after_pyright,
                 type_slots_after_ml,
                 number_of_type_slots_to_fill,
                 finish_time_ml_search,
