@@ -5,7 +5,7 @@ import libcst as cst
 
 from annotations import TypeSlotsVisitor
 from constants import UBIQUITOUS_ANNOTATIONS, COMMON_ANNOTATIONS
-from type_check import AccuracyMetric, PythonType, normalize_type, parse_type_str
+from type_check import PythonType, normalize_type, parse_type_str
 
 
 INCOMPLETE_TYPE_ANNOTATIONS = {
@@ -360,10 +360,8 @@ def calculate_evaluation_statistics(
         "avg_time_per_slot": avg_time_per_slot,
         "ml_search_time": round(ml_search_time, 2),
         "total_time": round(total_time, 2),
-        "peak_memory_usage_pyright_mb": round(
-            peak_memory_usage_pyright / (1024 * 1024), 2
-        ),
-        "peak_memory_usage_ml_mb": round(peak_memory_usage_ml / (1024 * 1024), 2),
+        "peak_memory_usage_pyright_mb": round(peak_memory_usage_pyright / 1024**2, 2),
+        "peak_memory_usage_ml_mb": round(peak_memory_usage_ml / 1024**2, 2),
         "ubiquitous_annotations_groundtruth_args_count": len(
             groundtruth_annotations_ubiquitous_args
         ),

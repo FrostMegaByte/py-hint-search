@@ -60,35 +60,3 @@ class LspClient(object):
     def exit(self):
         self.send_notification("exit")
         self.lsp_endpoint.stop()
-
-    def didChangeConfiguration(self):
-        self.send_notification(
-            "workspace/didChangeConfiguration",
-            {
-                "settings": {
-                    "python": {
-                        "condaPath": "C:\\Users\\markb\\anaconda3\\_conda.exe",
-                        "defaultInterpreterPath": "C:\\Users\\markb\\anaconda3\\python.exe",
-                        "languageServer": "Default",
-                        "interpreter": {"infoVisibility": "onPythonRelated"},
-                        "logging": {"level": "error"},
-                        "poetryPath": "poetry",
-                    },
-                }
-            },
-        )
-
-    def sendPythonConfiguration(self):
-        self.send_result(
-            "workspace/configuration",
-            [
-                {
-                    "condaPath": "C:\\Users\\markb\\anaconda3\\_conda.exe",
-                    "defaultInterpreterPath": "C:\\Users\\markb\\anaconda3\\python.exe",
-                    "languageServer": "Default",
-                    "interpreter": {"infoVisibility": "onPythonRelated"},
-                    "logging": {"level": "error"},
-                    "poetryPath": "poetry",
-                }
-            ],
-        )

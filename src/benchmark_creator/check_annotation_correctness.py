@@ -1,8 +1,6 @@
 import argparse
-from datetime import datetime
-import logging
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Tuple
 import libcst as cst
 import csv
 import colorama

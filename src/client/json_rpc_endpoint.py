@@ -30,22 +30,12 @@ class JsonRpcEndpoint(object):
 
     @staticmethod
     def _add_header(json_string):
-        """
-        Adds a header for the given json string
-
-        :param str json_string: The string
-        :return: the string with the header
-        """
         return JSON_RPC_REQ_FORMAT.format(
-            json_string_len=len(json_string), json_string=json_string
+            json_string_len=len(json_string),
+            json_string=json_string,
         )
 
     def write_message(self, message):
-        """
-        Sends the given message.
-
-        :param dict message: The message to send.
-        """
         json_string = json.dumps(message, cls=MyEncoder)
         # print("\nSENDING:", json_string)
         jsonrpc_req = self._add_header(json_string)
@@ -54,11 +44,6 @@ class JsonRpcEndpoint(object):
             self.stdin.flush()
 
     def read_response(self):
-        """
-        Recives a message.
-
-        :return: a message
-        """
         with self.read_lock:
             line = self.stdout.readline()
             if not line:

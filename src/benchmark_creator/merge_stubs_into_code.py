@@ -136,14 +136,14 @@ def parse_arguments() -> argparse.Namespace:
         "--project-path",
         type=dir_path,
         default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/requests/requests",
-        help="The directory path to the code of the project that will be type annotated.",
+        help="The path to the Python files directory of the project that will be type annotated.",
         # required=True,
     )
     parser.add_argument(
         "--stubs-path",
         type=dir_path,
         default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/typeshed/stubs/requests/requests",
-        help="The directory path to the stub files of the project that will be type annotated.",
+        help="The path to the stub files directory of the project that will be type annotated.",
         # required=True,
     )
 

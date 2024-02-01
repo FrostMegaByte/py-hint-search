@@ -47,6 +47,7 @@ def parse_arguments() -> argparse.Namespace:
 
     def dir_path(string: str) -> str:
         normalized_path = os.path.normpath(string)
+        normalized_path = normalized_path.replace(os.sep, "/")
         if os.path.isdir(normalized_path):
             return normalized_path
         else:
@@ -76,7 +77,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--top-n",
         type=int,
-        choices=range(1, 5),
+        choices=range(1, 6),
         default="3",
         help="Try the top-n type annotation predictions during search.",
     )

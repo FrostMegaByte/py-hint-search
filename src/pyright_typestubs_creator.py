@@ -57,6 +57,7 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     def dir_path(string: str) -> str:
+        string = string.replace(os.sep, "/")
         if os.path.isdir(string):
             return string
         else:
@@ -75,4 +76,3 @@ def parse_arguments() -> argparse.Namespace:
 if __name__ == "__main__":
     args = parse_arguments()
     create_pyright_typestubs(args.project_path)
-    # TODO: Remove decorators from type stubs as they can break libcst's parsing of the Pyright stubs

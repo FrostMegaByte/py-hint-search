@@ -1,7 +1,7 @@
 import logging
 import re
 import time
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union, TypeAlias
 import libcst as cst
 from colorama import Fore
 
@@ -12,13 +12,14 @@ from annotations import (
 from fake_editor import FakeEditor
 from imports import add_import_to_searchtree
 
-TypeSlotPredictions = List[List[Union[str, float]]]
+TypeSlot: TypeAlias = Tuple[str, ...]
+Predictions: TypeAlias = List[List[Union[str, float]]]
 
 
 def transform_predictions_to_slots_to_search(
     func_predictions: List[Dict[str, Any]],
-    available_slots: List[Tuple[str, ...]],
-) -> Dict[Tuple[str, ...], TypeSlotPredictions]:
+    available_slots: List[TypeSlot],
+) -> Dict[TypeSlot, Predictions]:
     slots_to_search = {}
     for func in func_predictions:
         func_name = func["q_name"].split(".")
@@ -47,7 +48,8 @@ def transform_predictions_to_slots_to_search(
 
 
 def build_search_tree(
-    search_tree_layers: Dict[Tuple[str, ...], TypeSlotPredictions], top_k: int
+    search_tree_layers: Dict[TypeSlot, Predictions],
+    top_k: int,
 ) -> Dict[str, Dict[str, Any]]:
     search_tree = {}
     for layer_index, (slot, preds) in enumerate(search_tree_layers.items()):
@@ -146,10 +148,6 @@ def depth_first_traversal(
                 type_slot["param_name"],
             )
         )
-
-        # print(modified_tree.code)
-        # print("-----------------------------------")
-
         editor.change_file(modified_tree.code, modified_location)
 
         # On error, change pointers to try next type annotation

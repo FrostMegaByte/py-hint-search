@@ -69,7 +69,9 @@ def remove_type_hints(source: str):
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Remove type hints from Python code")
+    parser = argparse.ArgumentParser(
+        description="Remove type annotations from Python code"
+    )
 
     def dir_path(string):
         if os.path.isdir(string):
@@ -81,7 +83,7 @@ def parse_arguments() -> argparse.Namespace:
         "--project-path",
         type=dir_path,
         default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/requests/fully-annotated",
-        help="The path to the project which will be stripped from type hints.",
+        help="The path to the Python files directory of the project which will be stripped from type annotations.",
         # required=True,
     )
 
