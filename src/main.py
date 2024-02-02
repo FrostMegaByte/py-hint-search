@@ -57,7 +57,7 @@ def parse_arguments() -> argparse.Namespace:
         "--project-path",
         type=dir_path,
         # default="D:/Documents/test/pygame-main/src_py",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/fully-annotated",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/fully-annotated",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/macro-benchmark/bpytop",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/rope",
         # default="D:/Documents/test/langchain-master/libs/langchain/langchain",
@@ -68,7 +68,7 @@ def parse_arguments() -> argparse.Namespace:
         "--venv-path",
         type=dir_path,
         # default="D:/Documents/test/onnx-main/.venv",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/django-correct/.venv",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/.venv",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/macro-benchmark/bpytop/.venv",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/.venv",
         # default="D:/Documents/test/langchain-master/libs/langchain/.venv",
@@ -398,9 +398,12 @@ if __name__ == "__main__":
     os.chdir(os.path.abspath(os.path.join(args.project_path, "..")))
 
     create_pyright_config_file(args.project_path, args.venv_path)
-    logger = create_main_logger()
-    evaluation_logger = create_evaluation_logger()
-    main(args)
+    for i in [5, 3, 1]:
+        args.top_n = i
+
+        logger = create_main_logger()
+        evaluation_logger = create_evaluation_logger()
+        main(args)
     remove_pyright_config_file(args.project_path)
 
     # try:
