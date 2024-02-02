@@ -156,7 +156,7 @@ def main():
     working_directory = os.getcwd()
     stubs_path = os.path.normpath(args.stubs_path)
     fully_annotated_path = os.path.abspath(
-        os.path.join(working_directory, "fully-annotated")
+        os.path.join(working_directory, "fully_annotated")
     )
     os.makedirs(fully_annotated_path, exist_ok=True)
 
