@@ -7,6 +7,7 @@ import pkgutil
 import inspect
 import importlib
 import contextlib
+import sys
 from types import ModuleType
 from typing import Dict, List, Optional, Set, Union
 import typing
@@ -68,6 +69,9 @@ def get_classes_from_module(module: ModuleType):
         if not name.startswith("_"):
             classes[name] = module.__file__
 
+    # Store the original sys.argv and clear it to avoid argument clashes during the import of a module using importlib
+    original_args = sys.argv
+    sys.argv = []
     if hasattr(module, "__path__"):
         for _, name, _ in pkgutil.iter_modules(module.__path__):
             try:
@@ -75,7 +79,8 @@ def get_classes_from_module(module: ModuleType):
                 classes.update(get_classes_from_module(submodule))
             except Exception:
                 continue
-
+    # Restore the original sys.argv
+    sys.argv = original_args
     return classes
 
 
