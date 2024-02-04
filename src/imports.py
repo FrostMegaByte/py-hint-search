@@ -22,7 +22,7 @@ def get_classes_from_file(file_path: str) -> Dict[str, str]:
         with open(file_path, "r", encoding="utf-8") as f:
             tree = ast.parse(f.read())
     except Exception as e:
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("main")
         logger.error(e)
 
     classes = {}
@@ -120,6 +120,7 @@ def add_import_to_searchtree(
     source_code_tree: cst.Module,
     type_annotation: str,
 ):
+    logger = logging.getLogger("main")
     # Handle "Literal" edge case
     if "Literal" in type_annotation:
         type_annotation = re.sub(r"Literal\[[^\]]*\]", "Literal", type_annotation)
@@ -163,8 +164,18 @@ def add_import_to_searchtree(
             if annotation == "...":
                 continue
             module, annotation = annotation.rsplit(".", 1)
-            transformer = ImportInserter(f"from {module} import {annotation}")
-            source_code_tree = source_code_tree.visit(transformer)
+            try:
+                transformer = ImportInserter(f"from {module} import {annotation}")
+                source_code_tree = source_code_tree.visit(transformer)
+            except Exception as e:
+                print(
+                    f"Import error. Original type '{type_annotation}'. Import 'from {module} import {annotation}' failed"
+                )
+                logger.error(
+                    f"Import error. Original type '{type_annotation}'. Import 'from {module} import {annotation}' failed"
+                )
+                logger.error(e)
+                continue
         elif annotation in all_project_classes:
             import_module_path = _get_import_module_path(
                 all_project_classes, annotation, file_path
@@ -173,10 +184,20 @@ def add_import_to_searchtree(
             if import_module_path == ".":
                 continue
 
-            transformer = ImportInserter(
-                f"from {import_module_path} import {annotation}"
-            )
-            source_code_tree = source_code_tree.visit(transformer)
+            try:
+                transformer = ImportInserter(
+                    f"from {import_module_path} import {annotation}"
+                )
+                source_code_tree = source_code_tree.visit(transformer)
+            except Exception as e:
+                print(
+                    f"Import error. Original type '{type_annotation}'. Import 'from {import_module_path} import {annotation}' failed"
+                )
+                logger.error(
+                    f"Import error. Original type '{type_annotation}'. Import 'from {import_module_path} import {annotation}' failed"
+                )
+                logger.error(e)
+                continue
         else:
             unknown_annotations.add(annotation)
             continue
