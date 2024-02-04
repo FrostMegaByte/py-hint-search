@@ -56,22 +56,16 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        # default="D:/Documents/test/pygame-main/src_py",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/fully-annotated",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/macro-benchmark/bpytop",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/rope",
-        # default="D:/Documents/test/langchain-master/libs/langchain/langchain",
+        default="D:/Documents/test/requests-main/src/requests",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/fully-annotated",
         help="The path to the Python files directory of the project that will be type annotated.",
         # required=True,
     )
     parser.add_argument(
         "--venv-path",
         type=dir_path,
-        # default="D:/Documents/test/onnx-main/.venv",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/.venv",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/macro-benchmark/bpytop/.venv",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/Rope-main/.venv",
-        # default="D:/Documents/test/langchain-master/libs/langchain/.venv",
+        default="D:/Documents/test/requests-main/.venv",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/.venv",
         help="The path to the virtual environment of the project that will be type annotated.",
     )
     parser.add_argument(
@@ -107,6 +101,22 @@ def remove_pyright_config_file(project_path: str) -> None:
         os.remove(pyright_config_file)
 
 
+def get_pyright_stubs_path(working_directory: str) -> str:
+    STUBS_DIRECTORY_PYRIGHT = "typings"
+    stubs_path_pyright = os.path.abspath(
+        os.path.join(working_directory, STUBS_DIRECTORY_PYRIGHT)
+    )
+
+    # If the directory doesn't exist in the current working directory, check the parent directory
+    if not os.path.isdir(stubs_path_pyright):
+        parent_directory = os.path.dirname(working_directory)
+        stubs_path_pyright = os.path.abspath(
+            os.path.join(parent_directory, STUBS_DIRECTORY_PYRIGHT)
+        )
+
+    return stubs_path_pyright
+
+
 def main(args: argparse.Namespace) -> None:
     working_directory = os.getcwd()
     project_path = (
@@ -124,11 +134,7 @@ def main(args: argparse.Namespace) -> None:
         ALL_VENV_CLASSES = get_all_classes_in_virtual_environment(args.venv_path)
         ALL_PROJECT_CLASSES = ALL_VENV_CLASSES | ALL_PROJECT_CLASSES
 
-    stubs_directory_pyright = "typings"
-    # TODO: Find typings directory for Pyright like the site-packages
-    stubs_path_pyright = os.path.abspath(
-        os.path.join(working_directory, stubs_directory_pyright)
-    )
+    stubs_path_pyright = get_pyright_stubs_path(working_directory)
     PYRIGHT_ANNOTATIONS_EXIST = os.path.isdir(stubs_path_pyright)
     if not PYRIGHT_ANNOTATIONS_EXIST:
         print(
