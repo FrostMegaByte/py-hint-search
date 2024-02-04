@@ -5,6 +5,7 @@ import time
 import libcst as cst
 import colorama
 from colorama import Fore
+import tracemalloc
 
 from loggers import create_evaluation_logger, create_main_logger
 from fake_editor import FakeEditor
@@ -33,6 +34,7 @@ from evaluation import (
     calculate_evaluation_statistics,
     create_evaluation_csv_file,
     gather_all_type_slots,
+    has_extra_annotations,
 )
 
 colorama.init(autoreset=True)
@@ -54,22 +56,24 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/requests-correct/fully-annotated",
-        help="The path to the python files directory of the project that will be type annotated.",
+        default="D:/Documents/test/requests-main/src/requests",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/fully-annotated",
+        help="The path to the Python files directory of the project that will be type annotated.",
         # required=True,
     )
     parser.add_argument(
         "--venv-path",
         type=dir_path,
+        default="D:/Documents/test/requests-main/.venv",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/.venv",
         help="The path to the virtual environment of the project that will be type annotated.",
     )
     parser.add_argument(
-        "--top-k",
+        "--top-n",
         type=int,
         choices=range(1, 6),
         default="1",
-        help="Try the top k type annotation predictions.",
+        help="Try the top-n type annotation predictions during search.",
     )
     parser.add_argument(
         "--keep-source-code-files",
@@ -97,6 +101,22 @@ def remove_pyright_config_file(project_path: str) -> None:
         os.remove(pyright_config_file)
 
 
+def get_pyright_stubs_path(working_directory: str) -> str:
+    STUBS_DIRECTORY_PYRIGHT = "typings"
+    stubs_path_pyright = os.path.abspath(
+        os.path.join(working_directory, STUBS_DIRECTORY_PYRIGHT)
+    )
+
+    # If the directory doesn't exist in the current working directory, check the parent directory
+    if not os.path.isdir(stubs_path_pyright):
+        parent_directory = os.path.dirname(working_directory)
+        stubs_path_pyright = os.path.abspath(
+            os.path.join(parent_directory, STUBS_DIRECTORY_PYRIGHT)
+        )
+
+    return stubs_path_pyright
+
+
 def main(args: argparse.Namespace) -> None:
     working_directory = os.getcwd()
     project_path = (
@@ -121,10 +141,7 @@ def main(args: argparse.Namespace) -> None:
         print(f"{Fore.RED}Project cannot be parsed by TypeT5...\n")
         logger.error("Project cannot be parsed by TypeT5...")
 
-    stubs_directory_pyright = "typings"
-    stubs_path_pyright = os.path.abspath(
-        os.path.join(working_directory, stubs_directory_pyright)
-    )
+    stubs_path_pyright = get_pyright_stubs_path(working_directory)
     PYRIGHT_ANNOTATIONS_EXIST = os.path.isdir(stubs_path_pyright)
     if not PYRIGHT_ANNOTATIONS_EXIST:
         print(
@@ -136,12 +153,12 @@ def main(args: argparse.Namespace) -> None:
             + "Recommended: Run command to create Pyright stubs"
         )
 
-    typed_directory = f"type-annotated-top{args.top_k}-typet5"
+    typed_directory = f"type-annotated-top{args.top_n}-typet5"
     typed_path = os.path.abspath(os.path.join(working_directory, typed_directory))
 
     editor = FakeEditor()
     editor.start(root_uri)
-    create_evaluation_csv_file(args.top_k)
+    create_evaluation_csv_file(args.top_n)
 
     # Walk through project directories and type annotate all python files
     for root, dirs, files in os.walk(args.project_path):
@@ -187,8 +204,8 @@ def main(args: argparse.Namespace) -> None:
             type_slots_groundtruth = gather_all_type_slots(source_code_tree)
 
             # Add type annotations inferred by Pyright
-            added_extra_pyright_annotations = False
             if PYRIGHT_ANNOTATIONS_EXIST:
+                tracemalloc.start()
                 relative_stub_subdirectory = os.path.relpath(root, working_directory)
                 stub_directory = os.path.join(
                     stubs_path_pyright, relative_stub_subdirectory
@@ -225,12 +242,10 @@ def main(args: argparse.Namespace) -> None:
                         visitor_pyright.annotations, all_unknown_annotations
                     )
                     source_code_tree = source_code_tree.visit(transformer_pyright)
-                    type_slots_after_pyright = gather_all_type_slots(source_code_tree)
+
                     editor.change_file(source_code_tree.code, None)
                     editor.has_diagnostic_error(at_start=True)
-                    added_extra_pyright_annotations = (
-                        type_slots_after_pyright != type_slots_groundtruth
-                    )
+
                 except FileNotFoundError:
                     print(
                         f"{Fore.YELLOW}'{file}' has no related Pyright stub file, but it should have one for better performance.\n"
@@ -240,6 +255,14 @@ def main(args: argparse.Namespace) -> None:
                         f"'{file}' has no related Pyright stub file, but it should have one for better performance. "
                         + "Recommended: Run command to recreate Pyright stubs"
                     )
+                finally:
+                    _, peak_memory_usage_pyright = tracemalloc.get_traced_memory()
+                    tracemalloc.stop()
+
+            type_slots_after_pyright = gather_all_type_slots(source_code_tree)
+            added_extra_pyright_annotations = has_extra_annotations(
+                type_slots_groundtruth, type_slots_after_pyright
+            )
 
             transformer_incomplete = RemoveIncompleteAnnotations()
             source_code_tree = source_code_tree.visit(transformer_incomplete)
@@ -257,10 +280,11 @@ def main(args: argparse.Namespace) -> None:
             source_code_tree.visit(visitor_type_slots)
 
             # Get ML type annotation predictions
+            tracemalloc.start()
             start_time_ml_search = time.perf_counter()
             relative_file_name = os.path.normpath(
                 os.path.join(relative_path, file)
-            ).replace("\\", "/")
+            ).replace(os.sep, "/")
             if relative_file_name not in ml_predictions_per_file:
                 print(
                     f"{Fore.YELLOW}'{file}' doesn't have TypeT5 type annotation predictions. Skipping...\n"
@@ -297,8 +321,11 @@ def main(args: argparse.Namespace) -> None:
                     editor.close_file()
 
                     finish_time_ml_search = 0
-                    type_slots_after_ml = {}
                     finish_time_total = time.perf_counter() - start_time_total
+                    _, peak_memory_usage_ml = tracemalloc.get_traced_memory()
+                    tracemalloc.stop()
+                    type_slots_after_ml = gather_all_type_slots(source_code_tree)
+
                     evaluation_statistics = calculate_evaluation_statistics(
                         os.path.join(relative_path, file),
                         type_slots_groundtruth,
@@ -307,9 +334,11 @@ def main(args: argparse.Namespace) -> None:
                         number_of_type_slots_to_fill,
                         finish_time_ml_search,
                         finish_time_total,
+                        peak_memory_usage_pyright,
+                        peak_memory_usage_ml,
                     )
                     append_to_evaluation_csv_file(
-                        list(evaluation_statistics.values()), args.top_k
+                        list(evaluation_statistics.values()), args.top_n
                     )
 
                     for k, v in evaluation_statistics.items():
@@ -329,7 +358,7 @@ def main(args: argparse.Namespace) -> None:
                 continue
 
             # Build the search tree
-            search_tree = build_search_tree(search_tree_layers, args.top_k)
+            search_tree = build_search_tree(search_tree_layers, args.top_n)
 
             # Perform depth first traversal to annotate the source code tree (most work)
             type_annotated_source_code_tree = depth_first_traversal(
@@ -340,6 +369,9 @@ def main(args: argparse.Namespace) -> None:
                 ALL_PROJECT_CLASSES,
             )
             finish_time_ml_search = time.perf_counter() - start_time_ml_search
+            _, peak_memory_usage_ml = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+
             type_slots_after_ml = gather_all_type_slots(type_annotated_source_code_tree)
 
             create_stub_file(
@@ -355,14 +387,16 @@ def main(args: argparse.Namespace) -> None:
             evaluation_statistics = calculate_evaluation_statistics(
                 os.path.join(relative_path, file),
                 type_slots_groundtruth,
-                type_slots_after_pyright if added_extra_pyright_annotations else {},
+                type_slots_after_pyright,
                 type_slots_after_ml,
                 number_of_type_slots_to_fill,
                 finish_time_ml_search,
                 finish_time_total,
+                peak_memory_usage_pyright if added_extra_pyright_annotations else 0,
+                peak_memory_usage_ml,
             )
             append_to_evaluation_csv_file(
-                list(evaluation_statistics.values()), args.top_k
+                list(evaluation_statistics.values()), args.top_n
             )
 
             for k, v in evaluation_statistics.items():
