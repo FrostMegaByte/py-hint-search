@@ -121,6 +121,9 @@ def add_import_to_searchtree(
     type_annotation: str,
 ):
     logger = logging.getLogger("main")
+    if type_annotation.startswith("(") and type_annotation.endswith(")"):
+        type_annotation = type_annotation[1:-1]
+
     # Handle "Literal" edge case
     if "Literal" in type_annotation:
         type_annotation = re.sub(r"Literal\[[^\]]*\]", "Literal", type_annotation)
