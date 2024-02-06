@@ -161,7 +161,9 @@ def main(args: argparse.Namespace) -> None:
 
     editor = FakeEditor()
     editor.start(root_uri)
-    create_evaluation_csv_file(args.top_n)
+
+    postfix = "pyright" if args.only_run_pyright else f"top{args.top_n}"
+    create_evaluation_csv_file(postfix)
 
     # Walk through project directories and type annotate all python files
     for root, dirs, files in os.walk(args.project_path):
@@ -344,7 +346,7 @@ def main(args: argparse.Namespace) -> None:
                         peak_memory_usage_ml,
                     )
                     append_to_evaluation_csv_file(
-                        list(evaluation_statistics.values()), args.top_n
+                        list(evaluation_statistics.values()), postfix
                     )
 
                     for k, v in evaluation_statistics.items():
@@ -401,9 +403,7 @@ def main(args: argparse.Namespace) -> None:
                 peak_memory_usage_pyright if added_extra_pyright_annotations else 0,
                 peak_memory_usage_ml,
             )
-            append_to_evaluation_csv_file(
-                list(evaluation_statistics.values()), args.top_n
-            )
+            append_to_evaluation_csv_file(list(evaluation_statistics.values()), postfix)
 
             for k, v in evaluation_statistics.items():
                 evaluation_logger.info(f"{k}: {v}")
