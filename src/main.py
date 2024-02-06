@@ -10,7 +10,7 @@ import tracemalloc
 from loggers import create_evaluation_logger, create_main_logger
 from fake_editor import FakeEditor
 from imports import (
-    add_import_to_searchtree,
+    add_import_to_source_code_tree,
     get_all_classes_in_project,
     get_all_classes_in_virtual_environment,
     handle_binary_operation_imports,
@@ -123,6 +123,56 @@ def get_pyright_stubs_path(working_directory: str) -> str:
     return stubs_path_pyright
 
 
+def run_pyright(
+    source_code_tree,
+    root,
+    working_directory,
+    file_path,
+    file,
+    all_project_classes,
+):
+    stubs_path_pyright = get_pyright_stubs_path(working_directory)
+    relative_stub_subdirectory = os.path.relpath(root, working_directory)
+    stub_directory = os.path.join(stubs_path_pyright, relative_stub_subdirectory)
+    stub_file = os.path.join(stub_directory, file + "i")
+    try:
+        with open(stub_file, "r", encoding="utf-8") as f:
+            stub_code = f.read()
+        stub_tree = cst.parse_module(stub_code)
+        visitor_pyright = PyrightTypeAnnotationCollector()
+        stub_tree.visit(visitor_pyright)
+
+        all_unknown_annotations = set()
+        for pyright_type_annotation in visitor_pyright.all_pyright_annotations:
+            # Handle imports of pyright type annotations
+            tree_with_import, unknown_annotations = add_import_to_source_code_tree(
+                source_code_tree,
+                pyright_type_annotation,
+                all_project_classes,
+                file_path,
+            )
+            source_code_tree = tree_with_import
+
+            if len(unknown_annotations) > 0:
+                all_unknown_annotations |= unknown_annotations
+                continue
+
+        transformer_pyright = PyrightTypeAnnotationTransformer(
+            visitor_pyright.annotations, all_unknown_annotations
+        )
+        source_code_tree = source_code_tree.visit(transformer_pyright)
+    except FileNotFoundError:
+        print(
+            f"{Fore.YELLOW}'{file}' has no related Pyright stub file, but it should have one for better performance.\n"
+            + "Recommended: Run command to recreate Pyright stubs\n"
+        )
+        logger.warning(
+            f"'{file}' has no related Pyright stub file, but it should have one for better performance. "
+            + "Recommended: Run command to recreate Pyright stubs"
+        )
+    return source_code_tree
+
+
 def run_ml_search(
     source_code_tree, file, added_extra_pyright_annotations, editor, all_project_classes
 ):
@@ -197,15 +247,15 @@ def main(args: argparse.Namespace) -> None:
         ALL_PROJECT_CLASSES = ALL_VENV_CLASSES | ALL_PROJECT_CLASSES
 
     stubs_path_pyright = get_pyright_stubs_path(working_directory)
-    PYRIGHT_ANNOTATIONS_EXIST = os.path.isdir(stubs_path_pyright)
-    if not PYRIGHT_ANNOTATIONS_EXIST:
+    pyright_annotations_exist = os.path.isdir(stubs_path_pyright)
+    if not pyright_annotations_exist:
         print(
             f"{Fore.YELLOW}No Pyright stubs found. Skipping Pyright annotations...\n"
-            + "Recommended: Run command to create Pyright stubs\n"
+            + "Recommended: Run Pyright command from README to create Pyright stubs\n"
         )
         logger.warning(
             "No Pyright stubs found. Skipping Pyright annotations... "
-            + "Recommended: Run command to create Pyright stubs"
+            + "Recommended: Run Pyright command from README to create Pyright stubs"
         )
 
     typed_directory = (
@@ -221,7 +271,7 @@ def main(args: argparse.Namespace) -> None:
     postfix = "pyright" if args.only_run_pyright else f"top{args.top_n}"
     create_evaluation_csv_file(postfix)
 
-    # Walk through project directories and type annotate all python files
+    # Walk through project directories and type annotate all Python files
     for root, dirs, files in os.walk(args.project_path):
         # Ignore the virtual environment directory
         if args.venv_path and venv_directory in dirs:
@@ -264,61 +314,25 @@ def main(args: argparse.Namespace) -> None:
             source_code_tree = cst.parse_module(python_code)
             type_slots_groundtruth = gather_all_type_slots(source_code_tree)
 
+            #####################
+            # Pyright step      #
+            #####################
             # Add type annotations inferred by Pyright
-            if PYRIGHT_ANNOTATIONS_EXIST:
+            if pyright_annotations_exist:
                 tracemalloc.start()
-                relative_stub_subdirectory = os.path.relpath(root, working_directory)
-                stub_directory = os.path.join(
-                    stubs_path_pyright, relative_stub_subdirectory
+                source_code_tree = run_pyright(
+                    source_code_tree,
+                    root,
+                    working_directory,
+                    file_path,
+                    file,
+                    ALL_PROJECT_CLASSES,
                 )
-                stub_file = os.path.join(stub_directory, file + "i")
-                try:
-                    with open(stub_file, "r", encoding="utf-8") as f:
-                        stub_code = f.read()
-                    stub_tree = cst.parse_module(stub_code)
-                    visitor_pyright = PyrightTypeAnnotationCollector()
-                    stub_tree.visit(visitor_pyright)
+                editor.change_file(source_code_tree.code, None)
+                editor.has_diagnostic_error(at_start=True)
 
-                    all_unknown_annotations = set()
-                    for (
-                        pyright_type_annotation
-                    ) in visitor_pyright.all_pyright_annotations:
-                        # Handle imports of pyright type annotations
-                        (
-                            tree_with_import,
-                            unknown_annotations,
-                        ) = add_import_to_searchtree(
-                            ALL_PROJECT_CLASSES,
-                            file_path,
-                            source_code_tree,
-                            pyright_type_annotation,
-                        )
-                        source_code_tree = tree_with_import
-
-                        if len(unknown_annotations) > 0:
-                            all_unknown_annotations |= unknown_annotations
-                            continue
-
-                    transformer_pyright = PyrightTypeAnnotationTransformer(
-                        visitor_pyright.annotations, all_unknown_annotations
-                    )
-                    source_code_tree = source_code_tree.visit(transformer_pyright)
-
-                    editor.change_file(source_code_tree.code, None)
-                    editor.has_diagnostic_error(at_start=True)
-
-                except FileNotFoundError:
-                    print(
-                        f"{Fore.YELLOW}'{file}' has no related Pyright stub file, but it should have one for better performance.\n"
-                        + "Recommended: Run command to recreate Pyright stubs\n"
-                    )
-                    logger.warning(
-                        f"'{file}' has no related Pyright stub file, but it should have one for better performance. "
-                        + "Recommended: Run command to recreate Pyright stubs"
-                    )
-                finally:
-                    _, peak_memory_usage_pyright = tracemalloc.get_traced_memory()
-                    tracemalloc.stop()
+                _, peak_memory_usage_pyright = tracemalloc.get_traced_memory()
+                tracemalloc.stop()
 
             type_slots_after_pyright = gather_all_type_slots(source_code_tree)
             added_extra_pyright_annotations = has_extra_annotations(
@@ -337,8 +351,8 @@ def main(args: argparse.Namespace) -> None:
                     editor.close_file()
                     continue
 
-            transformer_incomplete = RemoveIncompleteAnnotations()
-            source_code_tree = source_code_tree.visit(transformer_incomplete)
+            transformer_remove_incomplete = RemoveIncompleteAnnotations()
+            source_code_tree = source_code_tree.visit(transformer_remove_incomplete)
 
             transformer_binary_ops = BinaryAnnotationTransformer()
             source_code_tree = source_code_tree.visit(transformer_binary_ops)
@@ -348,7 +362,9 @@ def main(args: argparse.Namespace) -> None:
                 transformer_binary_ops.should_import_union,
             )
 
-            # Get ML type annotation predictions
+            #####################
+            # ML search step    #
+            #####################
             tracemalloc.start()
             start_time_ml_search = time.perf_counter()
 

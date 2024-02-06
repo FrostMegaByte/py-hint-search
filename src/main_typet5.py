@@ -10,7 +10,7 @@ import tracemalloc
 from loggers import create_evaluation_logger, create_main_logger
 from fake_editor import FakeEditor
 from imports import (
-    add_import_to_searchtree,
+    add_import_to_source_code_tree,
     get_all_classes_in_project,
     get_all_classes_in_virtual_environment,
     handle_binary_operation_imports,
@@ -226,11 +226,11 @@ def main(args: argparse.Namespace) -> None:
                         (
                             tree_with_import,
                             unknown_annotations,
-                        ) = add_import_to_searchtree(
-                            ALL_PROJECT_CLASSES,
-                            file_path,
+                        ) = add_import_to_source_code_tree(
                             source_code_tree,
                             pyright_type_annotation,
+                            ALL_PROJECT_CLASSES,
+                            file_path,
                         )
                         source_code_tree = tree_with_import
 
