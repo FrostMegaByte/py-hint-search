@@ -76,6 +76,12 @@ def parse_arguments() -> argparse.Namespace:
         help="Try the top-n type annotation predictions during search.",
     )
     parser.add_argument(
+        "--only-run-pyright",
+        type=bool,
+        default=False,
+        help="Only run Pyright and not the ml search step.",
+    )
+    parser.add_argument(
         "--keep-source-code-files",
         type=bool,
         default=True,
@@ -146,7 +152,11 @@ def main(args: argparse.Namespace) -> None:
             + "Recommended: Run command to create Pyright stubs"
         )
 
-    typed_directory = f"type-annotated-top{args.top_n}"
+    typed_directory = (
+        f"type-annotated-top{args.top_n}"
+        if not args.only_run_pyright
+        else "pyright-annotated"
+    )
     typed_path = os.path.abspath(os.path.join(working_directory, typed_directory))
 
     editor = FakeEditor()
@@ -277,7 +287,10 @@ def main(args: argparse.Namespace) -> None:
             start_time_ml_search = time.perf_counter()
             try:
                 ml_predictions = []
-                if len(visitor_type_slots.available_slots) > 0:
+                if (
+                    not args.only_run_pyright
+                    and len(visitor_type_slots.available_slots) > 0
+                ):
                     ml_predictions = get_ordered_type4py_predictions(
                         source_code_tree.code
                     )
