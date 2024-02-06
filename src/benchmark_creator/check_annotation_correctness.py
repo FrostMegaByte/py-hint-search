@@ -1,5 +1,6 @@
 import argparse
 import os
+import re
 from typing import Dict, Tuple
 import libcst as cst
 import csv
@@ -16,7 +17,7 @@ colorama.init(autoreset=True)
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Check the correctness of ML determined type annotations compared to ground truth"
+        description="Check the correctness of PyHintSearch determined type annotations compared to ground truth"
     )
 
     def dir_path(string):
@@ -26,19 +27,19 @@ def parse_arguments() -> argparse.Namespace:
             raise NotADirectoryError(string)
 
     parser.add_argument(
-        "-mlpp",
-        "--ml-annotated-project-path",
+        "-phspp",
+        "--pyhintsearch-annotated-project-path",
         type=dir_path,
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/type-annotated-source-code",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/type-annotated-source-code-stripped",
-        help="The path to the ML annotated project directory.",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/black/annotations-stripped/type-annotated-top1-source-code",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/pyright-annotated-source-code",
+        help="The path to the PyHintSearch annotated project directory.",
         # required=True,
     )
     parser.add_argument(
         "-fapp",
         "--fully-annotated-project-path",
         type=dir_path,
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/projects/example",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/black/fully_annotated",
         default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/fully-annotated",
         help="The path to the fully annotated project directory.",
         # required=True,
@@ -47,14 +48,14 @@ def parse_arguments() -> argparse.Namespace:
         "-v",
         "--verbose",
         type=bool,
-        default=True,
-        help="Log which fully annotated type and ML-determined type don't match.",
+        default=False,
+        help="Log which fully annotated type and PyHintSearch-determined type don't match.",
     )
 
     return parser.parse_args()
 
 
-def create_correctness_csv_file():
+def create_correctness_csv_file(postfix):
     headers = [
         "file",
         "metric",
@@ -63,13 +64,13 @@ def create_correctness_csv_file():
         "# groundtruth annotations",
         "precision",
         "recall",
-        "# ML annotations",
+        "# added PyHintSearch annotations (excl. dunder methods)",
         "# ubiquitous annotations (excl. dunder methods)",
         "# common annotations (excl. dunder methods)",
         "# rare annotations (excl. dunder methods)",
     ]
     with open(
-        "logs-evaluation/type correctness.csv",
+        f"logs-evaluation/type-correctness-{postfix}.csv",
         "w",
         newline="",
     ) as file:
@@ -77,9 +78,9 @@ def create_correctness_csv_file():
         writer.writerow(headers)
 
 
-def append_to_correctness_csv_file(correctness_statistics):
+def append_to_correctness_csv_file(correctness_statistics, postfix):
     with open(
-        "logs-evaluation/type correctness.csv",
+        f"logs-evaluation/type-correctness-{postfix}.csv",
         "a",
         newline="",
     ) as file:
@@ -92,14 +93,14 @@ def filter_out_Missing(annotations):
 
 
 def calculate_correctness(
-    ml_annotations: Dict[Tuple[str, ...], PythonType],
+    pyhintsearch_annotations: Dict[Tuple[str, ...], PythonType],
     groundtruth_annotations: Dict[Tuple[str, ...], PythonType],
     metric: AccuracyMetric,
 ):
-    assert len(ml_annotations) == len(groundtruth_annotations)
+    assert len(pyhintsearch_annotations) == len(groundtruth_annotations)
 
     label_types = list(map(metric.process_type, groundtruth_annotations.values()))
-    pred_types = list(map(metric.process_type, ml_annotations.values()))
+    pred_types = list(map(metric.process_type, pyhintsearch_annotations.values()))
 
     if metric.filter_none_any | metric.filter_rare:
         filtered_ids = [i for i, t in enumerate(label_types) if metric.to_keep_type(t)]
@@ -123,7 +124,11 @@ def calculate_correctness(
 
     try:
         n_all = len(
-            [v for v in ml_annotations.values() if v != parse_type_str("Missing")]
+            [
+                v
+                for v in pyhintsearch_annotations.values()
+                if v != parse_type_str("Missing")
+            ]
         )
         precision = n_correct / n_all
     except ZeroDivisionError:
@@ -146,7 +151,27 @@ def calculate_correctness(
 def main():
     args = parse_arguments()
     os.chdir(os.path.abspath(os.path.join(args.fully_annotated_project_path, "..")))
-    create_correctness_csv_file()
+
+    annotated_dir_name = args.pyhintsearch_annotated_project_path.split("/")[-1]
+    postfix = "SOMETHING_WENT_WRONG"
+    if annotated_dir_name.startswith("type-annotated-top"):
+        match = re.search(r"\d+", annotated_dir_name)
+        if match:
+            postfix = f"top{int(match.group())}"
+    elif annotated_dir_name.startswith("pyright"):
+        postfix = "pyright"
+    create_correctness_csv_file(postfix)
+
+    pyright_annotated_project_path = os.path.join(
+        os.getcwd(), "pyright-annotated-source-code"
+    )
+    if not os.path.exists(pyright_annotated_project_path):
+        print(
+            f"{Fore.BLUE}Pyright annotated source code is not found... For fair comparisons, make sure that the Pyright annotated source code is available in the 'pyright-annotated-source' directory"
+        )
+        continuation = input("Want to continue without it? (y/n)")
+        if continuation.lower() not in ["y", "yes"]:
+            return
 
     metrics = AccuracyMetric.condensed_default_metrics(
         common_type_names=COMMON_ANNOTATIONS
@@ -170,18 +195,39 @@ def main():
                 print(e)
 
             try:
-                ml_annotated_file_path = os.path.abspath(
-                    os.path.join(args.ml_annotated_project_path, relative_path, file)
+                pyhintsearch_annotated_file_path = os.path.abspath(
+                    os.path.join(
+                        args.pyhintsearch_annotated_project_path, relative_path, file
+                    )
                 )
-                ml_annotated_code = open(
-                    ml_annotated_file_path, "r", encoding="utf-8"
+                pyhintsearch_annotated_code = open(
+                    pyhintsearch_annotated_file_path, "r", encoding="utf-8"
                 ).read()
-                ml_annotated_tree = cst.parse_module(ml_annotated_code)
-                visitor_ml_annotated = TypeSlotsVisitor()
-                ml_annotated_tree.visit(visitor_ml_annotated)
+                pyhintsearch_annotated_tree = cst.parse_module(
+                    pyhintsearch_annotated_code
+                )
+                visitor_pyhintsearch_annotated = TypeSlotsVisitor()
+                pyhintsearch_annotated_tree.visit(visitor_pyhintsearch_annotated)
             except FileNotFoundError as e:
-                print(f"{Fore.RED}No ML annotated file found for '{file}'")
+                print(
+                    f"{Fore.RED}No PyHintSearch annotated file found for '{file}'. Skipping..."
+                )
                 continue
+
+            # Skip files that don't have a corresponding Pyright annotated file as those must be used for comparison against PyHintSearch annotations
+            if os.path.exists(pyright_annotated_project_path):
+                try:
+                    pyright_annotated_file_path = os.path.abspath(
+                        os.path.join(
+                            pyright_annotated_project_path, relative_path, file
+                        )
+                    )
+                    open(pyright_annotated_file_path, "r", encoding="utf-8").read()
+                except FileNotFoundError as e:
+                    print(
+                        f"{Fore.RED}No Pyright annotated file found for '{file}'. Skipping..."
+                    )
+                    continue
 
             UNANNOTATED_GROUND_TRUTHS = {
                 None,
@@ -198,43 +244,64 @@ def main():
                 groundtruth_annotations
             )
 
-            ml_annotations = {
+            # Skip files with no ground truth annotations
+            if len(groundtruth_annotations) == 0:
+                print(f"{Fore.RED}No groundtruth annotations in '{file}'. Skipping...")
+                continue
+
+            pyhintsearch_annotations = {
                 k: parse_type_str(v) if v is not None else parse_type_str("Missing")
-                for k, v in visitor_ml_annotated.all_type_slots.items()
+                for k, v in visitor_pyhintsearch_annotated.all_type_slots.items()
                 if k in groundtruth_annotations
             }
 
             for metric in metrics:
                 statistics, incorrect_types = calculate_correctness(
-                    ml_annotations, groundtruth_annotations, metric
+                    pyhintsearch_annotations, groundtruth_annotations, metric
                 )
 
                 if args.verbose:
                     if len(incorrect_types) > 0:
                         print(f"Incorrect types according to '{metric.name}' metric")
-                    for slot, ml_annotation, groundtruth_annotation in incorrect_types:
+                    for (
+                        slot,
+                        pyhintsearch_annotation,
+                        groundtruth_annotation,
+                    ) in incorrect_types:
                         print(f"{Fore.RED}Annotation mismatch for '{slot}':")
                         print(f"{Fore.RED}Fully annotated: {groundtruth_annotation}")
-                        print(f"{Fore.RED}ML annotated: {ml_annotation}")
+                        print(
+                            f"{Fore.RED}PyHintSearch annotated: {pyhintsearch_annotation}"
+                        )
                         print()
 
-                ml_annotations_without_missing = filter_out_Missing(ml_annotations)
+                pyhintsearch_annotations_without_missing = filter_out_Missing(
+                    pyhintsearch_annotations
+                )
                 (
                     annotations_ubiquitous,
                     annotations_common,
                     annotations_rare,
-                ) = split_into_ubiquitous_common_rare(ml_annotations_without_missing)
+                ) = split_into_ubiquitous_common_rare(
+                    pyhintsearch_annotations_without_missing
+                )
 
                 correctness_statistics = {
                     "file": os.path.join(relative_path, file),
                     "metric": metric.name,
                     **statistics,
-                    "ml_annotations_count": len(ml_annotations_without_missing),
+                    "pyhintsearch_annotations_count": len(
+                        pyhintsearch_annotations_without_missing
+                    ),
                     "ubiquitous_annotations_count": len(annotations_ubiquitous),
                     "common_annotations_count": len(annotations_common),
                     "rare_annotations_count": len(annotations_rare),
                 }
-                append_to_correctness_csv_file(list(correctness_statistics.values()))
+                append_to_correctness_csv_file(
+                    list(correctness_statistics.values()), postfix
+                )
+
+            print(f"{Fore.GREEN}Successful")
 
 
 if __name__ == "__main__":
