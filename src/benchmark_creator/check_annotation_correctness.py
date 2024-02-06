@@ -27,21 +27,27 @@ def parse_arguments() -> argparse.Namespace:
             raise NotADirectoryError(string)
 
     parser.add_argument(
+        "-fapp",
+        "--fully-annotated-project-path",
+        type=dir_path,
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/black/fully_annotated",
+        help="The path to the fully annotated project directory.",
+        # required=True,
+    )
+    parser.add_argument(
         "-phspp",
         "--pyhintsearch-annotated-project-path",
         type=dir_path,
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/black/annotations-stripped/type-annotated-top1-source-code",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/pyright-annotated-source-code",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/black/annotations-stripped/type-annotated-top1-source-code",
         help="The path to the PyHintSearch annotated project directory.",
         # required=True,
     )
     parser.add_argument(
-        "-fapp",
-        "--fully-annotated-project-path",
+        "-ipp",
+        "--intersecting-project-path",
         type=dir_path,
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/black/fully_annotated",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/fully-annotated",
-        help="The path to the fully annotated project directory.",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/black/annotations-stripped/pyright-annotated-source-code",
+        help="The path to the project whose files are intersected with the PyHintSearch annotated project files. (This is needed for equal comparison for thesis evaluation). I.e. if PyHintSearch project is type-annotated-topn directory, this should be pyright-annotated directory. If PyHintSearch project is pyright-annotated directory, this should be type-annotated-topn directory).",
         # required=True,
     )
     parser.add_argument(
@@ -143,8 +149,8 @@ def calculate_correctness(
         "correct_count": n_correct,
         "incorrect_count": n_incorrect,
         "groundtruth_annotations_count": n_total,
-        "precision": precision,
-        "recall": recall,
+        "precision": round(precision, 2),
+        "recall": round(recall, 2),
     }, incorrect_annotations
 
 
@@ -162,14 +168,11 @@ def main():
         postfix = "pyright"
     create_correctness_csv_file(postfix)
 
-    pyright_annotated_project_path = os.path.join(
-        os.getcwd(), "pyright-annotated-source-code"
-    )
-    if not os.path.exists(pyright_annotated_project_path):
+    if args.intersecting_project_path is None:
         print(
-            f"{Fore.BLUE}Pyright annotated source code is not found... For fair comparisons, make sure that the Pyright annotated source code is available in the 'pyright-annotated-source' directory"
+            f"{Fore.BLUE}Intersecting project path is not specified... For fair comparisons for thesis, make sure that it is. It can be ommitted if you want to check correctness of PyHintSearch annotations to the fully annotated project."
         )
-        continuation = input("Want to continue without it? (y/n)")
+        continuation = input("Want to continue without it? (y/n): ")
         if continuation.lower() not in ["y", "yes"]:
             return
 
@@ -214,18 +217,18 @@ def main():
                 )
                 continue
 
-            # Skip files that don't have a corresponding Pyright annotated file as those must be used for comparison against PyHintSearch annotations
-            if os.path.exists(pyright_annotated_project_path):
+            # Skip files that don't have a corresponding "intersecting project" annotated file as those must be used for comparison against the PyHintSearch annotations
+            if os.path.exists(args.intersecting_project_path):
                 try:
-                    pyright_annotated_file_path = os.path.abspath(
+                    intersecting_annotated_file_path = os.path.abspath(
                         os.path.join(
-                            pyright_annotated_project_path, relative_path, file
+                            args.intersecting_project_path, relative_path, file
                         )
                     )
-                    open(pyright_annotated_file_path, "r", encoding="utf-8").read()
+                    open(intersecting_annotated_file_path, "r", encoding="utf-8").read()
                 except FileNotFoundError as e:
                     print(
-                        f"{Fore.RED}No Pyright annotated file found for '{file}'. Skipping..."
+                        f"{Fore.RED}No intersecting project annotated file found for '{file}'. Skipping..."
                     )
                     continue
 
