@@ -10,7 +10,7 @@ from annotations import (
     insert_return_annotation,
 )
 from fake_editor import FakeEditor
-from imports import add_import_to_searchtree
+from imports import add_import_to_source_code_tree
 
 TypeSlot: TypeAlias = Tuple[str, ...]
 Predictions: TypeAlias = List[List[Union[str, float]]]
@@ -107,11 +107,11 @@ def depth_first_traversal(
 
         # Handle imports of type annotations
         current_file_path = editor.edit_document.uri.removeprefix("file:///")
-        tree_with_import, is_unknown_annotation = add_import_to_searchtree(
-            all_project_classes,
-            current_file_path,
+        tree_with_import, is_unknown_annotation = add_import_to_source_code_tree(
             modified_trees[layer_index],
             type_annotation,
+            all_project_classes,
+            current_file_path,
         )
         modified_trees[layer_index] = tree_with_import
 

@@ -114,11 +114,11 @@ def _get_import_module_path(
     return module_path
 
 
-def add_import_to_searchtree(
-    all_project_classes: Dict[str, str],
-    file_path: str,
+def add_import_to_source_code_tree(
     source_code_tree: cst.Module,
     type_annotation: str,
+    all_project_classes: Dict[str, str],
+    file_path: str,
 ):
     logger = logging.getLogger("main")
     if type_annotation.startswith("(") and type_annotation.endswith(")"):
