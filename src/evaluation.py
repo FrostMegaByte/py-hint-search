@@ -34,45 +34,46 @@ def create_evaluation_csv_file(postfix) -> None:
         "file",
         "# groundtruth annotations",
         "# annotations after Pyright",
-        "# annotations after ML",
-        "# available type slots",
+        "# annotations after ML search",
+        "# fillable type slots",
+        "# unfilled type slots",
         "# total type slots",
         "# extra Pyright annotations",
-        "# extra ML annotations",
+        "# extra ML search annotations",
         f"% extra Pyright annotations",
-        f"% extra ML annotations",
+        f"% extra ML search annotations",
         f"% extra annotations (all)",
-        "# available type slots after Pyright",
-        f"% extra ML annotations after Pyright",
-        "# ML evaluated type slots",
-        "Average time per slot (s)",
+        "# ML search evaluated type slots",
+        f"% extra ML search annotations after Pyright",
+        "Pyright time (s)",
+        "Average time per ML search slot (s)",
         "ML search time (s)",
         "Total time (s)",
         "Peak memory usage Pyright (mb)",
-        "Peak memory usage ML (mb)",
-        "# ubiquitous annotations arguments (groundtruth)",
+        "Peak memory usage ML search (mb)",
+        "# ubiquitous annotations parameters (groundtruth)",
         "# ubiquitous annotations returns (groundtruth)",
-        "# common annotations arguments (groundtruth)",
+        "# common annotations parameters (groundtruth)",
         "# common annotations returns (groundtruth)",
-        "# rare annotations arguments (groundtruth)",
+        "# rare annotations parameters (groundtruth)",
         "# rare annotations returns (groundtruth)",
-        "# ubiquitous annotations arguments (extra Pyright)",
+        "# ubiquitous annotations parameters (extra Pyright)",
         "# ubiquitous annotations returns (extra Pyright)",
-        "# common annotations arguments (extra Pyright)",
+        "# common annotations parameters (extra Pyright)",
         "# common annotations returns (extra Pyright)",
-        "# rare annotations arguments (extra Pyright)",
+        "# rare annotations parameters (extra Pyright)",
         "# rare annotations returns (extra Pyright)",
-        "# ubiquitous annotations arguments (extra ML)",
+        "# ubiquitous annotations parameters (extra ML)",
         "# ubiquitous annotations returns (extra ML)",
-        "# common annotations arguments (extra ML)",
+        "# common annotations parameters (extra ML)",
         "# common annotations returns (extra ML)",
-        "# rare annotations arguments (extra ML)",
+        "# rare annotations parameters (extra ML)",
         "# rare annotations returns (extra ML)",
-        "# ubiquitous annotations arguments (all)",
+        "# ubiquitous annotations parameters (all)",
         "# ubiquitous annotations returns (all)",
-        "# common annotations arguments (all)",
+        "# common annotations parameters (all)",
         "# common annotations returns (all)",
-        "# rare annotations arguments (all)",
+        "# rare annotations parameters (all)",
         "# rare annotations returns (all)",
     ]
     with open(
@@ -124,7 +125,7 @@ def gather_annotated_slots(type_slots):
     return annotations
 
 
-def gather_available_slots(type_slots):
+def gather_fillable_slots(type_slots):
     annotations = {k: v for k, v in type_slots.items() if v is None}
     return annotations
 
@@ -168,30 +169,32 @@ def split_into_ubiquitous_common_rare(type_slots):
     return ubiquitous, common, rare
 
 
-def split_arguments_and_return_types(type_slots):
-    arguments_dict = {}
+def split_parameters_and_return_types(type_slots):
+    parameters_dict = {}
     return_dict = {}
     for slot, annotation in type_slots.items():
         if slot[-1] != "return":
-            arguments_dict[slot] = annotation
+            parameters_dict[slot] = annotation
         else:
             return_dict[slot] = annotation
-    return arguments_dict, return_dict
+    return parameters_dict, return_dict
 
 
 def gather_ubiquitous_common_rare(annotations):
     annotations_filtered = remove_known_dunder_methods(annotations)
     annotations_normalized = normalize_annotations(annotations_filtered)
     ubiquitous, common, rare = split_into_ubiquitous_common_rare(annotations_normalized)
-    ubiquitous_args, ubiquitous_returns = split_arguments_and_return_types(ubiquitous)
-    common_args, common_returns = split_arguments_and_return_types(common)
-    rare_args, rare_returns = split_arguments_and_return_types(rare)
+    ubiquitous_params, ubiquitous_returns = split_parameters_and_return_types(
+        ubiquitous
+    )
+    common_params, common_returns = split_parameters_and_return_types(common)
+    rare_params, rare_returns = split_parameters_and_return_types(rare)
     return (
-        ubiquitous_args,
+        ubiquitous_params,
         ubiquitous_returns,
-        common_args,
+        common_params,
         common_returns,
-        rare_args,
+        rare_params,
         rare_returns,
     )
 
@@ -202,15 +205,24 @@ def calculate_evaluation_statistics(
     type_slots_after_pyright,
     type_slots_after_ml_search,
     number_of_ml_evaluated_type_slots,
+    has_performed_pyright_step,
+    has_performed_ml_search,
+    pyright_time,
     ml_search_time,
     total_time,
     peak_memory_usage_pyright,
-    peak_memory_usage_ml,
+    peak_memory_usage_ml_search,
 ):
     annotations_groundtruth = gather_annotated_slots(type_slots_groundtruth)
     annotations_after_pyright = gather_annotated_slots(type_slots_after_pyright)
     annotations_after_ml_search = gather_annotated_slots(type_slots_after_ml_search)
-    available_slots = gather_available_slots(type_slots_groundtruth)
+    fillable_slots = gather_fillable_slots(type_slots_groundtruth)
+    if has_performed_ml_search:
+        unfilled_slots = gather_fillable_slots(type_slots_after_ml_search)
+    elif has_performed_pyright_step:
+        unfilled_slots = gather_fillable_slots(type_slots_after_pyright)
+    else:
+        unfilled_slots = fillable_slots
 
     extra_pyright_annotations = {
         key_pyright: value_pyright
@@ -226,11 +238,11 @@ def calculate_evaluation_statistics(
     added_extra_pyright_annotations = len(extra_pyright_annotations) > 0
     added_extra_ml_annotations = len(extra_ml_annotations) > 0
 
-    # Pyright's percentage of filled-in slots of all available slots
+    # Pyright's percentage of filled-in slots of all fillable slots
     try:
         if added_extra_pyright_annotations:
             extra_pyright_annotations_percentage = (
-                len(extra_pyright_annotations) / len(available_slots) * 100
+                len(extra_pyright_annotations) / len(fillable_slots) * 100
             )
         else:
             extra_pyright_annotations_percentage = 0.0
@@ -240,11 +252,11 @@ def calculate_evaluation_statistics(
     except ZeroDivisionError:
         extra_pyright_annotations_percentage = "-"
 
-    # ML's percentage of filled-in slots of all available slots
+    # ML's percentage of filled-in slots of all fillable slots
     try:
         if added_extra_ml_annotations:
             extra_ml_annotations_percentage = (
-                len(extra_ml_annotations) / len(available_slots) * 100
+                len(extra_ml_annotations) / len(fillable_slots) * 100
             )
         else:
             extra_ml_annotations_percentage = 0.0
@@ -252,18 +264,18 @@ def calculate_evaluation_statistics(
     except ZeroDivisionError:
         extra_ml_annotations_percentage = "-"
 
-    # Percentage of all available slots filled in
+    # Percentage of all fillable slots filled in
     try:
         if added_extra_ml_annotations:
             new_annotations_percentage = (
                 (len(annotations_after_ml_search) - len(annotations_groundtruth))
-                / len(available_slots)
+                / len(fillable_slots)
                 * 100
             )
         elif added_extra_pyright_annotations:
             new_annotations_percentage = (
                 (len(annotations_after_pyright) - len(annotations_groundtruth))
-                / len(available_slots)
+                / len(fillable_slots)
                 * 100
             )
         else:
@@ -272,14 +284,11 @@ def calculate_evaluation_statistics(
     except ZeroDivisionError:
         new_annotations_percentage = "-"
 
-    # ML's percentage of filled-in slots of all still available slots after Pyright
+    # ML's percentage of filled-in slots of all still fillable slots after Pyright
     try:
-        available_slots_after_pyright_count = len(available_slots) - len(
-            extra_pyright_annotations
-        )
         if added_extra_ml_annotations:
             extra_ml_annotations_after_pyright_percentage = (
-                len(extra_ml_annotations) / available_slots_after_pyright_count * 100
+                len(extra_ml_annotations) / number_of_ml_evaluated_type_slots * 100
             )
         else:
             extra_ml_annotations_after_pyright_percentage = 0.0
@@ -290,32 +299,34 @@ def calculate_evaluation_statistics(
         extra_ml_annotations_after_pyright_percentage = "-"
 
     try:
-        avg_time_per_slot = round(ml_search_time / number_of_ml_evaluated_type_slots, 2)
+        avg_time_per_ml_search_slot = round(
+            ml_search_time / number_of_ml_evaluated_type_slots, 2
+        )
     except ZeroDivisionError:
-        avg_time_per_slot = "-"
+        avg_time_per_ml_search_slot = "-"
 
     (
-        groundtruth_annotations_ubiquitous_args,
+        groundtruth_annotations_ubiquitous_params,
         groundtruth_annotations_ubiquitous_returns,
-        groundtruth_annotations_common_args,
+        groundtruth_annotations_common_params,
         groundtruth_annotations_common_returns,
-        groundtruth_annotations_rare_args,
+        groundtruth_annotations_rare_params,
         groundtruth_annotations_rare_returns,
     ) = gather_ubiquitous_common_rare(annotations_groundtruth)
     (
-        extra_pyright_annotations_ubiquitous_args,
+        extra_pyright_annotations_ubiquitous_params,
         extra_pyright_annotations_ubiquitous_returns,
-        extra_pyright_annotations_common_args,
+        extra_pyright_annotations_common_params,
         extra_pyright_annotations_common_returns,
-        extra_pyright_annotations_rare_args,
+        extra_pyright_annotations_rare_params,
         extra_pyright_annotations_rare_returns,
     ) = gather_ubiquitous_common_rare(extra_pyright_annotations)
     (
-        extra_ml_annotations_ubiquitous_args,
+        extra_ml_annotations_ubiquitous_params,
         extra_ml_annotations_ubiquitous_returns,
-        extra_ml_annotations_common_args,
+        extra_ml_annotations_common_params,
         extra_ml_annotations_common_returns,
-        extra_ml_annotations_rare_args,
+        extra_ml_annotations_rare_params,
         extra_ml_annotations_rare_returns,
     ) = gather_ubiquitous_common_rare(extra_ml_annotations)
 
@@ -326,93 +337,106 @@ def calculate_evaluation_statistics(
         or {}
     )
     (
-        all_annotations_ubiquitous_args,
+        all_annotations_ubiquitous_params,
         all_annotations_ubiquitous_returns,
-        all_annotations_common_args,
+        all_annotations_common_params,
         all_annotations_common_returns,
-        all_annotations_rare_args,
+        all_annotations_rare_params,
         all_annotations_rare_returns,
     ) = gather_ubiquitous_common_rare(annotations_all)
 
     evaluation_statistics = {
         "file": file,
         "annotations_groundtruth_count": len(annotations_groundtruth),
-        "annotations_after_pyright_count": len(annotations_after_pyright)
-        if added_extra_pyright_annotations
-        else "-",
-        "annotations_after_ml_search_count": len(annotations_after_ml_search)
-        if number_of_ml_evaluated_type_slots > 0
-        else "-",
-        "available_type_slots_count": len(available_slots),
+        "annotations_after_pyright_count": (
+            len(annotations_after_pyright) if has_performed_pyright_step else "-"
+        ),
+        "annotations_after_ml_search_count": (
+            len(annotations_after_ml_search) if has_performed_ml_search else "-"
+        ),
+        "fillable_type_slots_count": len(fillable_slots),
+        "unfilled_type_slots_count": len(unfilled_slots),
         "total_type_slots_count": len(type_slots_groundtruth),
-        "extra_pyright_annotations_count": len(extra_pyright_annotations)
-        if added_extra_pyright_annotations
-        else "-",
-        "extra_ml_annotations_count": len(extra_ml_annotations)
-        if number_of_ml_evaluated_type_slots > 0
-        else "-",
+        "extra_pyright_annotations_count": (
+            len(extra_pyright_annotations) if has_performed_pyright_step else "-"
+        ),
+        "extra_ml_annotations_count": (
+            len(extra_ml_annotations) if has_performed_ml_search else "-"
+        ),
         "extra_pyright_annotations_percentage": extra_pyright_annotations_percentage,
-        "extra_ml_annotations_percentage": extra_ml_annotations_percentage,
+        "extra_ml_annotations_percentage": (
+            extra_ml_annotations_percentage if has_performed_ml_search else "-"
+        ),
         "extra_annotations_percentage": new_annotations_percentage,
-        "available_type_slots_after_pyright_count": available_slots_after_pyright_count,
-        "extra_ml_annotations_after_pyright_percentage": extra_ml_annotations_after_pyright_percentage,
         "ml_evaluated_type_slots_count": number_of_ml_evaluated_type_slots,
-        "avg_time_per_slot": avg_time_per_slot,
+        "extra_ml_annotations_after_pyright_percentage": (
+            extra_ml_annotations_after_pyright_percentage
+            if has_performed_ml_search
+            else "-"
+        ),
+        "pyright_time": round(pyright_time, 2),
+        "avg_time_per_ml_search_slot": avg_time_per_ml_search_slot,
         "ml_search_time": round(ml_search_time, 2),
         "total_time": round(total_time, 2),
         "peak_memory_usage_pyright_mb": round(peak_memory_usage_pyright / 1024**2, 2),
-        "peak_memory_usage_ml_mb": round(peak_memory_usage_ml / 1024**2, 2),
-        "ubiquitous_annotations_groundtruth_args_count": len(
-            groundtruth_annotations_ubiquitous_args
+        "peak_memory_usage_ml_search_mb": round(
+            peak_memory_usage_ml_search / 1024**2, 2
+        ),
+        "ubiquitous_annotations_groundtruth_params_count": len(
+            groundtruth_annotations_ubiquitous_params
         ),
         "ubiquitous_annotations_groundtruth_returns_count": len(
             groundtruth_annotations_ubiquitous_returns
         ),
-        "common_annotations_groundtruth_args_count": len(
-            groundtruth_annotations_common_args
+        "common_annotations_groundtruth_params_count": len(
+            groundtruth_annotations_common_params
         ),
         "common_annotations_groundtruth_returns_count": len(
             groundtruth_annotations_common_returns
         ),
-        "rare_annotations_groundtruth_args_count": len(
-            groundtruth_annotations_rare_args
+        "rare_annotations_groundtruth_params_count": len(
+            groundtruth_annotations_rare_params
         ),
         "rare_annotations_groundtruth_returns_count": len(
             groundtruth_annotations_rare_returns
         ),
-        "ubiquitous_annotations_pyright_args_count": len(
-            extra_pyright_annotations_ubiquitous_args
+        "ubiquitous_annotations_pyright_params_count": len(
+            extra_pyright_annotations_ubiquitous_params
         ),
         "ubiquitous_annotations_pyright_returns_count": len(
             extra_pyright_annotations_ubiquitous_returns
         ),
-        "common_annotations_pyright_args_count": len(
-            extra_pyright_annotations_common_args
+        "common_annotations_pyright_params_count": len(
+            extra_pyright_annotations_common_params
         ),
         "common_annotations_pyright_returns_count": len(
             extra_pyright_annotations_common_returns
         ),
-        "rare_annotations_pyright_args_count": len(extra_pyright_annotations_rare_args),
+        "rare_annotations_pyright_params_count": len(
+            extra_pyright_annotations_rare_params
+        ),
         "rare_annotations_pyright_returns_count": len(
             extra_pyright_annotations_rare_returns
         ),
-        "ubiquitous_annotations_ml_args_count": len(
-            extra_ml_annotations_ubiquitous_args,
+        "ubiquitous_annotations_ml_params_count": len(
+            extra_ml_annotations_ubiquitous_params,
         ),
         "ubiquitous_annotations_ml_returns_count": len(
             extra_ml_annotations_ubiquitous_returns,
         ),
-        "common_annotations_ml_args_count": len(extra_ml_annotations_common_args),
+        "common_annotations_ml_params_count": len(extra_ml_annotations_common_params),
         "common_annotations_ml_returns_count": len(extra_ml_annotations_common_returns),
-        "rare_annotations_ml_args_count": len(extra_ml_annotations_rare_args),
+        "rare_annotations_ml_params_count": len(extra_ml_annotations_rare_params),
         "rare_annotations_ml_returns_count": len(extra_ml_annotations_rare_returns),
-        "ubiquitous_annotations_all_args_count": len(all_annotations_ubiquitous_args),
+        "ubiquitous_annotations_all_params_count": len(
+            all_annotations_ubiquitous_params
+        ),
         "ubiquitous_annotations_all_returns_count": len(
             all_annotations_ubiquitous_returns
         ),
-        "common_annotations_all_args_count": len(all_annotations_common_args),
+        "common_annotations_all_params_count": len(all_annotations_common_params),
         "common_annotations_all_returns_count": len(all_annotations_common_returns),
-        "rare_annotations_all_args_count": len(all_annotations_rare_args),
+        "rare_annotations_all_params_count": len(all_annotations_rare_params),
         "rare_annotations_all_returns_count": len(all_annotations_rare_returns),
     }
     return evaluation_statistics

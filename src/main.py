@@ -57,7 +57,7 @@ def parse_arguments() -> argparse.Namespace:
         "--project-path",
         type=dir_path,
         # default="D:/Documents/test/requests-main/src/requests",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/fully-annotated",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/fully-annotated",
         help="The path to the Python files directory of the project that will be type annotated.",
         # required=True,
     )
@@ -65,7 +65,7 @@ def parse_arguments() -> argparse.Namespace:
         "--venv-path",
         type=dir_path,
         # default="D:/Documents/test/requests-main/.venv",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/.venv",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/.venv",
         help="The path to the virtual environment of the project that will be type annotated.",
     )
     parser.add_argument(
@@ -79,7 +79,7 @@ def parse_arguments() -> argparse.Namespace:
         "--only-run-pyright",
         type=bool,
         default=False,
-        help="Only run Pyright and not the ml search step.",
+        help="Only run Pyright and not the ML search step.",
     )
     parser.add_argument(
         "--keep-source-code-files",
@@ -131,6 +131,11 @@ def run_pyright(
     file,
     all_project_classes,
 ):
+    """
+    Returns:
+        source_code_tree: the source code tree to perform the ML search on
+        has_performed_pyright_step: boolean indicating whether the Pyright step has been performed
+    """
     stubs_path_pyright = get_pyright_stubs_path(working_directory)
     relative_stub_subdirectory = os.path.relpath(root, working_directory)
     stub_directory = os.path.join(stubs_path_pyright, relative_stub_subdirectory)
@@ -161,6 +166,7 @@ def run_pyright(
             visitor_pyright.annotations, all_unknown_annotations
         )
         source_code_tree = source_code_tree.visit(transformer_pyright)
+        return source_code_tree, True
     except FileNotFoundError:
         print(
             f"{Fore.YELLOW}'{file}' has no related Pyright stub file, but it should have one for better performance.\n"
@@ -170,7 +176,7 @@ def run_pyright(
             f"'{file}' has no related Pyright stub file, but it should have one for better performance. "
             + "Recommended: Run command to recreate Pyright stubs"
         )
-    return source_code_tree
+        return source_code_tree, False
 
 
 def run_ml_search(
@@ -320,7 +326,9 @@ def main(args: argparse.Namespace) -> None:
             # Add type annotations inferred by Pyright
             if pyright_annotations_exist:
                 tracemalloc.start()
-                source_code_tree = run_pyright(
+                start_time_pyright = time.perf_counter()
+
+                source_code_tree, has_performed_pyright_step = run_pyright(
                     source_code_tree,
                     root,
                     working_directory,
@@ -330,6 +338,10 @@ def main(args: argparse.Namespace) -> None:
                 )
                 editor.change_file(source_code_tree.code, None)
                 editor.has_diagnostic_error(at_start=True)
+
+                finish_time_pyright = time.perf_counter() - start_time_pyright
+                if not has_performed_pyright_step:
+                    finish_time_pyright = 0
 
                 _, peak_memory_usage_pyright = tracemalloc.get_traced_memory()
                 tracemalloc.stop()
@@ -393,7 +405,7 @@ def main(args: argparse.Namespace) -> None:
             if not has_performed_ml_search:
                 finish_time_ml_search = 0
 
-            type_slots_after_ml = gather_all_type_slots(source_code_tree)
+            type_slots_after_ml_search = gather_all_type_slots(source_code_tree)
 
             create_stub_file(
                 source_code_tree,
@@ -405,19 +417,22 @@ def main(args: argparse.Namespace) -> None:
             editor.close_file()
 
             finish_time_total = time.perf_counter() - start_time_total
-            _, peak_memory_usage_ml = tracemalloc.get_traced_memory()
+            _, peak_memory_usage_ml_search = tracemalloc.get_traced_memory()
             tracemalloc.stop()
 
             evaluation_statistics = calculate_evaluation_statistics(
                 os.path.join(relative_path, file),
                 type_slots_groundtruth,
                 type_slots_after_pyright,
-                type_slots_after_ml,
+                type_slots_after_ml_search,
                 number_of_ml_evaluated_type_slots,
+                has_performed_pyright_step,
+                has_performed_ml_search,
+                finish_time_pyright,
                 finish_time_ml_search,
                 finish_time_total,
-                peak_memory_usage_pyright if added_extra_pyright_annotations else 0,
-                peak_memory_usage_ml if has_performed_ml_search else 0,
+                peak_memory_usage_pyright if has_performed_pyright_step else 0,
+                peak_memory_usage_ml_search if has_performed_ml_search else 0,
             )
             append_to_evaluation_csv_file(list(evaluation_statistics.values()), postfix)
 
