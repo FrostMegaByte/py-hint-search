@@ -7,7 +7,7 @@ import colorama
 from colorama import Fore
 import tracemalloc
 
-from loggers import create_evaluation_logger, create_main_logger
+from loggers import create_evaluation_logger, create_main_logger, close_logger
 from fake_editor import FakeEditor
 from imports import (
     add_import_to_source_code_tree,
@@ -474,6 +474,8 @@ if __name__ == "__main__":
     logger = create_main_logger()
     evaluation_logger = create_evaluation_logger()
     main(args)
+    close_logger(logger)
+    close_logger(evaluation_logger)
     remove_pyright_config_file(args.project_path)
 
     # try:

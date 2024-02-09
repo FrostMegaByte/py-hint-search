@@ -7,7 +7,7 @@ import colorama
 from colorama import Fore
 import tracemalloc
 
-from loggers import create_evaluation_logger, create_main_logger
+from loggers import create_evaluation_logger, create_main_logger, close_logger
 from fake_editor import FakeEditor
 from imports import (
     add_import_to_source_code_tree,
@@ -57,7 +57,7 @@ def parse_arguments() -> argparse.Namespace:
         "--project-path",
         type=dir_path,
         # default="D:/Documents/test/requests-main/src/requests",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/fully-annotated",
+        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/fully-annotated",
         help="The path to the Python files directory of the project that will be type annotated.",
         # required=True,
     )
@@ -65,7 +65,7 @@ def parse_arguments() -> argparse.Namespace:
         "--venv-path",
         type=dir_path,
         # default="D:/Documents/test/requests-main/.venv",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/braintree-correct/.venv",
+        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/html5lib-correct/.venv",
         help="The path to the virtual environment of the project that will be type annotated.",
     )
     parser.add_argument(
@@ -454,6 +454,8 @@ if __name__ == "__main__":
         logger = create_main_logger()
         evaluation_logger = create_evaluation_logger()
         main(args)
+        close_logger(logger)
+        close_logger(evaluation_logger)
     remove_pyright_config_file(args.project_path)
 
     # try:
