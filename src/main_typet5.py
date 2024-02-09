@@ -264,6 +264,7 @@ def main(args: argparse.Namespace) -> None:
         ALL_PROJECT_CLASSES = ALL_VENV_CLASSES | ALL_PROJECT_CLASSES
 
     if not args.only_run_pyright:
+        start_time_typet5 = time.perf_counter()
         try:
             print(
                 "Predicting type annotations with TypeT5. This will take a long time..."
@@ -272,6 +273,13 @@ def main(args: argparse.Namespace) -> None:
         except TypeT5Exception:
             print(f"{Fore.RED}Project cannot be parsed by TypeT5...\n")
             logger.error("Project cannot be parsed by TypeT5...")
+        finish_time_typet5 = time.perf_counter() - start_time_typet5
+        logger.info(
+            f"Time TypeT5 model took for predictions: {finish_time_typet5:.2f} seconds"
+        )
+        evaluation_logger.info(
+            f"Time TypeT5 model took for predictions: {finish_time_typet5:.2f} seconds"
+        )
 
     stubs_path_pyright = get_pyright_stubs_path(working_directory)
     pyright_annotations_exist = os.path.isdir(stubs_path_pyright)
