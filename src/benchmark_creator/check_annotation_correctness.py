@@ -9,13 +9,13 @@ from colorama import Fore
 
 from annotations import TypeSlotsVisitor
 from constants import COMMON_ANNOTATIONS
-from evaluation import remove_known_dunder_methods, split_into_ubiquitous_common_rare
+from evaluation import remove_known_dunder_methods
 from type_check import PythonType, parse_type_str, AccuracyMetric
 
 colorama.init(autoreset=True)
 
 
-def parse_arguments() -> argparse.Namespace:
+def parse_arguments(project_name, top_n) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Check the correctness of PyHintSearch determined type annotations compared to ground truth"
     )
@@ -30,7 +30,7 @@ def parse_arguments() -> argparse.Namespace:
         "-fapp",
         "--fully-annotated-project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/black/fully_annotated",
+        default=f"D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/{project_name}/fully_annotated",
         help="The path to the fully annotated project directory.",
         # required=True,
     )
@@ -38,7 +38,7 @@ def parse_arguments() -> argparse.Namespace:
         "-phspp",
         "--pyhintsearch-annotated-project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/black/annotations-stripped/type-annotated-top1-source-code",
+        default=f"D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/{project_name}/annotations-stripped/type-annotated-top{top_n}-source-code",
         help="The path to the PyHintSearch annotated project directory.",
         # required=True,
     )
@@ -46,7 +46,7 @@ def parse_arguments() -> argparse.Namespace:
         "-ipp",
         "--intersecting-project-path",
         type=dir_path,
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/black/annotations-stripped/pyright-annotated-source-code",
+        default=f"D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/{project_name}/annotations-stripped/pyright-annotated-source-code",
         help="The path to the project whose files are intersected with the PyHintSearch annotated project files. (This is needed for equal comparison for thesis evaluation). I.e. if PyHintSearch project is type-annotated-topn directory, this should be pyright-annotated directory. If PyHintSearch project is pyright-annotated directory, this should be type-annotated-topn directory).",
         # required=True,
     )
@@ -65,15 +65,12 @@ def create_correctness_csv_file(postfix):
     headers = [
         "file",
         "metric",
+        "# groundtruth annotations (excl. dunder methods)",
+        "# added PyHintSearch annotations (excl. dunder methods)",
         "# correct",
         "# incorrect",
-        "# groundtruth annotations",
         "precision",
         "recall",
-        "# added PyHintSearch annotations (excl. dunder methods)",
-        "# ubiquitous annotations (excl. dunder methods)",
-        "# common annotations (excl. dunder methods)",
-        "# rare annotations (excl. dunder methods)",
     ]
     with open(
         f"logs-evaluation/type-correctness-{postfix}.csv",
@@ -99,34 +96,56 @@ def filter_out_Missing(annotations):
 
 
 def calculate_correctness(
-    pyhintsearch_annotations: Dict[Tuple[str, ...], PythonType],
     groundtruth_annotations: Dict[Tuple[str, ...], PythonType],
+    pyhintsearch_annotations: Dict[Tuple[str, ...], PythonType],
     metric: AccuracyMetric,
 ):
     assert len(pyhintsearch_annotations) == len(groundtruth_annotations)
 
-    label_types = list(map(metric.process_type, groundtruth_annotations.values()))
-    pred_types = list(map(metric.process_type, pyhintsearch_annotations.values()))
+    groundtruth_annotations = {
+        k: metric.process_type(v) for k, v in groundtruth_annotations.items()
+    }
+    pyhintsearch_annotations = {
+        k: metric.process_type(v) for k, v in pyhintsearch_annotations.items()
+    }
 
     if metric.filter_none_any | metric.filter_rare:
-        filtered_ids = [i for i, t in enumerate(label_types) if metric.to_keep_type(t)]
-        pred_types = [pred_types[i] for i in filtered_ids]
-        label_types = [label_types[i] for i in filtered_ids]
+        filtered_ids = [
+            i
+            for i, t in enumerate(groundtruth_annotations.values())
+            if metric.to_keep_type(t)
+        ]
+        groundtruth_annotations = {
+            k: v
+            for i, (k, v) in enumerate(groundtruth_annotations.items())
+            if i in filtered_ids
+        }
+        pyhintsearch_annotations = {
+            k: v
+            for i, (k, v) in enumerate(pyhintsearch_annotations.items())
+            if i in filtered_ids
+        }
 
     n_correct = 0
     n_incorrect = 0
-    n_total = 0
+    n_pyhintsearch = 0
+    n_groundtruth = 0
     incorrect_annotations = []
 
-    for i, p, l in zip(range(len(pred_types)), pred_types, label_types):
-        if p == l:
+    for i, gt, pred in zip(
+        range(len(groundtruth_annotations)),
+        groundtruth_annotations.values(),
+        pyhintsearch_annotations.values(),
+    ):
+        if pred == gt:
             n_correct += 1
         else:
             n_incorrect += 1
-            incorrect_annotations.append(
-                (list(groundtruth_annotations.keys())[i], p, l)
-            )
-        n_total += 1
+            type_slot = list(groundtruth_annotations.keys())[i]
+            incorrect_annotations.append((type_slot, gt, pred))
+        if pred != parse_type_str("Missing"):
+            n_pyhintsearch += 1
+        n_groundtruth += 1
 
     try:
         n_all = len(
@@ -146,16 +165,24 @@ def calculate_correctness(
         recall = "-"
 
     return {
+        "groundtruth_annotations_count": n_groundtruth,
+        "pyhintsearch_annotations_count": n_pyhintsearch,
         "correct_count": n_correct,
         "incorrect_count": n_incorrect,
-        "groundtruth_annotations_count": n_total,
         "precision": round(precision, 2),
         "recall": round(recall, 2),
     }, incorrect_annotations
 
 
 def main():
-    args = parse_arguments()
+    while True:
+        project_name = input("Please enter the project name: ")
+        top_n = int(input("Enter a value (1, 3 or 5): "))
+        if top_n in (1, 3, 5):
+            break
+        print("Invalid input. Please enter 1, 3 or 5.")
+
+    args = parse_arguments(project_name, top_n)
     os.chdir(os.path.abspath(os.path.join(args.fully_annotated_project_path, "..")))
 
     annotated_dir_name = args.pyhintsearch_annotated_project_path.split("/")[-1]
@@ -260,45 +287,33 @@ def main():
 
             for metric in metrics:
                 statistics, incorrect_types = calculate_correctness(
-                    pyhintsearch_annotations, groundtruth_annotations, metric
+                    groundtruth_annotations,
+                    pyhintsearch_annotations,
+                    metric,
                 )
 
                 if args.verbose:
                     if len(incorrect_types) > 0:
                         print(f"Incorrect types according to '{metric.name}' metric")
+
                     for (
                         slot,
-                        pyhintsearch_annotation,
                         groundtruth_annotation,
+                        pyhintsearch_annotation,
                     ) in incorrect_types:
                         print(f"{Fore.RED}Annotation mismatch for '{slot}':")
-                        print(f"{Fore.RED}Fully annotated: {groundtruth_annotation}")
                         print(
-                            f"{Fore.RED}PyHintSearch annotated: {pyhintsearch_annotation}"
+                            f"{Fore.RED}Groundtruth annotation: {groundtruth_annotation}"
+                        )
+                        print(
+                            f"{Fore.RED}PyHintSearch annotation: {pyhintsearch_annotation}"
                         )
                         print()
-
-                pyhintsearch_annotations_without_missing = filter_out_Missing(
-                    pyhintsearch_annotations
-                )
-                (
-                    annotations_ubiquitous,
-                    annotations_common,
-                    annotations_rare,
-                ) = split_into_ubiquitous_common_rare(
-                    pyhintsearch_annotations_without_missing
-                )
 
                 correctness_statistics = {
                     "file": os.path.join(relative_path, file),
                     "metric": metric.name,
                     **statistics,
-                    "pyhintsearch_annotations_count": len(
-                        pyhintsearch_annotations_without_missing
-                    ),
-                    "ubiquitous_annotations_count": len(annotations_ubiquitous),
-                    "common_annotations_count": len(annotations_common),
-                    "rare_annotations_count": len(annotations_rare),
                 }
                 append_to_correctness_csv_file(
                     list(correctness_statistics.values()), postfix

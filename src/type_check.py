@@ -358,7 +358,7 @@ class AccuracyMetric:
                 name="full_acc",
             ),
             AccuracyMetric(
-                common_type_names, ast_depth_limit=ast_depth_limit, name="acc"
+                common_type_names, ast_depth_limit=ast_depth_limit, name="adjusted_acc"
             ),
             AccuracyMetric(
                 common_type_names,
