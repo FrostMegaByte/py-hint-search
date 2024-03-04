@@ -179,6 +179,23 @@ def run_pyright(
         return source_code_tree, False
 
 
+def preprocess_source_code_tree(source_code_tree: cst.Module) -> cst.Module:
+    # TODO: It is good to remove incomplete annotations as the ML search can try to fill them in.
+    # However, there is a bug when the ML search times out, then the incomplete annotations are still removed from the original source code
+    transformer_remove_incomplete = RemoveIncompleteAnnotations()
+    source_code_tree = source_code_tree.visit(transformer_remove_incomplete)
+
+    # Transform binary operations to use the Optional and Union types as Type4Py cannot handle the newer '... | ...' syntax
+    transformer_binary_ops = BinaryAnnotationTransformer()
+    source_code_tree = source_code_tree.visit(transformer_binary_ops)
+    source_code_tree = handle_binary_operation_imports(
+        source_code_tree,
+        transformer_binary_ops.should_import_optional,
+        transformer_binary_ops.should_import_union,
+    )
+    return source_code_tree
+
+
 def run_ml_search(
     source_code_tree,
     file,
@@ -392,17 +409,6 @@ def main(args: argparse.Namespace) -> None:
                     editor.close_file()
                     continue
 
-            transformer_remove_incomplete = RemoveIncompleteAnnotations()
-            source_code_tree = source_code_tree.visit(transformer_remove_incomplete)
-
-            transformer_binary_ops = BinaryAnnotationTransformer()
-            source_code_tree = source_code_tree.visit(transformer_binary_ops)
-            source_code_tree = handle_binary_operation_imports(
-                source_code_tree,
-                transformer_binary_ops.should_import_optional,
-                transformer_binary_ops.should_import_union,
-            )
-
             #####################
             # ML search step    #
             #####################
@@ -413,6 +419,8 @@ def main(args: argparse.Namespace) -> None:
             should_skip_file = False
             number_of_ml_evaluated_type_slots = 0
             if not args.only_run_pyright:
+                source_code_tree = preprocess_source_code_tree(source_code_tree)
+
                 (
                     source_code_tree,
                     has_performed_ml_search,
