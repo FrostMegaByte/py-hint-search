@@ -456,21 +456,15 @@ if __name__ == "__main__":
     args = parse_arguments()
     os.chdir(os.path.abspath(os.path.join(args.project_path, "..")))
 
-    create_pyright_config_file(args.project_path, args.venv_path)
-    logger = create_main_logger()
-    evaluation_logger = create_evaluation_logger()
-    main(args)
-    close_logger(logger)
-    close_logger(evaluation_logger)
-    remove_pyright_config_file(args.project_path)
-
-    # try:
-    #     create_pyright_config_file(args.project_path, args.venv_path)
-    #     logger = create_main_logger()
-    #     evaluation_logger = create_evaluation_logger()
-    #     main(args)
-    #     remove_pyright_config_file(args.project_path)
-    # except Exception as e:
-    #     remove_pyright_config_file(args.project_path)
-    #     print(f"{Fore.RED}An exception occurred. See logs for more details.")
-    #     logger.error(e)
+    try:
+        create_pyright_config_file(args.project_path, args.venv_path)
+        logger = create_main_logger()
+        evaluation_logger = create_evaluation_logger()
+        main(args)
+        close_logger(logger)
+        close_logger(evaluation_logger)
+        remove_pyright_config_file(args.project_path)
+    except Exception as e:
+        remove_pyright_config_file(args.project_path)
+        print(f"{Fore.RED}An exception occurred. See logs for more details.")
+        logger.error(e)
