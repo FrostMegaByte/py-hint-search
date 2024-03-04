@@ -15,7 +15,7 @@ from type_check import PythonType, parse_type_str, AccuracyMetric
 colorama.init(autoreset=True)
 
 
-def parse_arguments(project_name: str, top_n: int) -> argparse.Namespace:
+def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Check the correctness of PyHintSearch determined type annotations compared to ground truth"
     )
@@ -30,25 +30,21 @@ def parse_arguments(project_name: str, top_n: int) -> argparse.Namespace:
         "-fapp",
         "--fully-annotated-project-path",
         type=dir_path,
-        default=f"D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/{project_name}/fully_annotated",
         help="The path to the fully annotated project directory.",
-        # required=True,
+        required=True,
     )
     parser.add_argument(
         "-phspp",
         "--pyhintsearch-annotated-project-path",
         type=dir_path,
-        default=f"D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/{project_name}/annotations-stripped/type-annotated-top{top_n}-source-code",
         help="The path to the PyHintSearch annotated project directory.",
-        # required=True,
+        required=True,
     )
     parser.add_argument(
         "-ipp",
         "--intersecting-project-path",
         type=dir_path,
-        default=f"D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/{project_name}/annotations-stripped/pyright-annotated-source-code",
         help="The path to the project whose files are intersected with the PyHintSearch annotated project files. (This is needed for equal comparison for thesis evaluation). I.e. if PyHintSearch project is type-annotated-topn-source-code directory, this should be pyright-annotated-source-code directory. If PyHintSearch project is pyright-annotated-source-code directory, this should be type-annotated-topn-source-code directory).",
-        # required=True,
     )
     parser.add_argument(
         "-v",
@@ -316,28 +312,7 @@ if __name__ == "__main__":
             break
         print("Invalid input. Please enter 1, 3 or 5.")
 
-    # for project_name in [
-    #     "black",
-    #     "bleach",
-    #     "braintree",
-    #     "colorama",
-    #     "dateparser",
-    #     "django",
-    #     "exifread",
-    #     "flask",
-    #     "html5lib",
-    #     "matplotlib",
-    #     "pandas",
-    #     "Pillow",
-    #     "redis",
-    #     "requests",
-    #     "seaborn",
-    #     "stripe",
-    # ]:
-    #     for i in [1, 3, 5]:
-    #         top_n = i
-
-    args = parse_arguments(project_name, top_n)
+    args = parse_arguments()
     os.chdir(os.path.abspath(os.path.join(args.fully_annotated_project_path, "..")))
 
     main(args)

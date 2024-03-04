@@ -57,16 +57,12 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--project-path",
         type=dir_path,
-        # default="D:/Documents/test/requests-main/src/requests",
-        default="D:/Documents/py-hint-search/ff",
         help="The path to the Python files directory of the project that will be type annotated.",
-        # required=True,
+        required=True,
     )
     parser.add_argument(
         "--venv-path",
         type=dir_path,
-        default="D:/Documents/py-hint-search/.venv",
-        # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/html5lib-correct/.venv",
         help="The path to the virtual environment of the project that will be type annotated.",
     )
     parser.add_argument(
