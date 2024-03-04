@@ -1,0 +1,25 @@
+file,metric,# groundtruth annotations (excl. dunder methods),# added PyHintSearch annotations (excl. dunder methods),# correct,# incorrect,precision,recall
+.\configuration.py,adjusted_acc,0,0,0,0,-,-
+.\configuration.py,base_acc,0,0,0,0,-,-
+.\credentials_parser.py,adjusted_acc,0,0,0,0,-,-
+.\credentials_parser.py,base_acc,0,0,0,0,-,-
+.\credit_card_gateway.py,adjusted_acc,0,0,0,0,-,-
+.\credit_card_gateway.py,base_acc,0,0,0,0,-,-
+.\environment.py,adjusted_acc,17,17,9,8,0.53,0.53
+.\environment.py,base_acc,17,17,9,8,0.53,0.53
+.\paginated_collection.py,adjusted_acc,1,1,0,1,0.0,0.0
+.\paginated_collection.py,base_acc,1,1,1,0,1.0,1.0
+.\resource.py,adjusted_acc,0,0,0,0,-,-
+.\resource.py,base_acc,0,0,0,0,-,-
+.\resource_collection.py,adjusted_acc,1,1,0,1,0.0,0.0
+.\resource_collection.py,base_acc,1,1,1,0,1.0,1.0
+.\subscription.py,adjusted_acc,1,1,0,1,0.0,0.0
+.\subscription.py,base_acc,1,1,0,1,0.0,0.0
+.\subscription_gateway.py,adjusted_acc,1,1,0,1,0.0,0.0
+.\subscription_gateway.py,base_acc,1,1,0,1,0.0,0.0
+.\testing_gateway.py,adjusted_acc,1,1,0,1,0.0,0.0
+.\testing_gateway.py,base_acc,1,1,0,1,0.0,0.0
+util\graphql_client.py,adjusted_acc,0,0,0,0,-,-
+util\graphql_client.py,base_acc,0,0,0,0,-,-
+util\http.py,adjusted_acc,0,0,0,0,-,-
+util\http.py,base_acc,0,0,0,0,-,-

@@ -1,0 +1,11 @@
+file,metric,# groundtruth annotations (excl. dunder methods),# added PyHintSearch annotations (excl. dunder methods),# correct,# incorrect,precision,recall
+.\css_sanitizer.py,adjusted_acc,4,3,1,3,0.33,0.25
+.\css_sanitizer.py,base_acc,4,3,1,3,0.33,0.25
+.\html5lib_shim.py,adjusted_acc,7,7,2,5,0.29,0.29
+.\html5lib_shim.py,base_acc,7,7,4,3,0.57,0.57
+.\linkifier.py,adjusted_acc,18,3,2,16,0.67,0.11
+.\linkifier.py,base_acc,18,3,2,16,0.67,0.11
+.\sanitizer.py,adjusted_acc,20,2,0,20,0.0,0.0
+.\sanitizer.py,base_acc,20,2,0,20,0.0,0.0
+.\__init__.py,adjusted_acc,13,10,3,10,0.3,0.23
+.\__init__.py,base_acc,13,10,3,10,0.3,0.23

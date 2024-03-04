@@ -1,0 +1,21 @@
+file,# groundtruth annotations,# annotations after Pyright,# annotations after ML search,# fillable type slots,# unfilled type slots,# total type slots,# extra Pyright annotations,# extra ML search annotations,% extra Pyright annotations,% extra ML search annotations,% extra annotations (all),# ML search evaluated type slots,% extra ML search annotations after Pyright,Pyright time (s),Average time per ML search slot (s),ML search time (s),Total time (s),Peak memory usage Pyright (mb),Peak memory usage ML search (mb),# ubiquitous annotations parameters (groundtruth),# ubiquitous annotations returns (groundtruth),# common annotations parameters (groundtruth),# common annotations returns (groundtruth),# rare annotations parameters (groundtruth),# rare annotations returns (groundtruth),# ubiquitous annotations parameters (extra Pyright),# ubiquitous annotations returns (extra Pyright),# common annotations parameters (extra Pyright),# common annotations returns (extra Pyright),# rare annotations parameters (extra Pyright),# rare annotations returns (extra Pyright),# ubiquitous annotations parameters (extra ML),# ubiquitous annotations returns (extra ML),# common annotations parameters (extra ML),# common annotations returns (extra ML),# rare annotations parameters (extra ML),# rare annotations returns (extra ML),# ubiquitous annotations parameters (all),# ubiquitous annotations returns (all),# common annotations parameters (all),# common annotations returns (all),# rare annotations parameters (all),# rare annotations returns (all)
+./helpers.py,0,10,38,40,2,40,10,28,25.0,70.0,95.0,30,93.33,3.23,1.18,35.42,41.12,0.64,7.85,0,0,0,0,0,0,0,8,0,1,0,1,22,5,1,0,0,0,22,13,1,1,0,1
+./testing.py,0,6,23,27,4,27,6,17,22.22,62.96,85.19,21,80.95,0.97,1.19,25.0,26.41,0.57,5.55,0,0,0,0,0,0,0,0,0,1,0,0,6,5,2,0,4,0,6,5,2,1,4,0
+./debughelpers.py,0,5,14,14,0,14,5,9,35.71,64.29,100.0,9,100.0,0.43,0.74,6.64,7.3,0.22,2.36,0,0,0,0,0,0,0,2,0,0,0,0,4,1,2,0,2,0,4,3,2,0,2,0
+./views.py,0,2,7,7,0,7,2,5,28.57,71.43,100.0,5,100.0,0.47,0.69,3.45,4.13,0.75,1.33,0,0,0,0,0,0,0,0,0,1,0,0,2,2,1,0,0,0,2,2,1,1,0,0
+./templating.py,0,6,27,33,6,33,6,21,18.18,63.64,81.82,27,77.78,0.84,1.63,43.9,45.11,1.48,6.25,0,0,0,0,0,0,0,2,0,0,0,2,8,6,1,0,6,0,8,8,1,0,6,2
+./app.py,0,20,70,78,8,78,20,50,25.64,64.1,89.74,58,86.21,5.74,2.72,157.83,165.03,1.54,38.95,0,0,0,0,0,0,0,10,0,4,0,5,27,8,10,2,2,0,27,18,10,6,2,5
+./wrappers.py,0,4,7,8,1,8,4,3,50.0,37.5,87.5,4,75.0,0.48,0.6,2.41,3.02,0.23,0.71,0,0,0,0,0,0,0,4,0,0,0,0,0,2,1,0,0,0,0,6,1,0,0,0
+./blueprints.py,0,2,7,7,0,7,2,5,28.57,71.43,100.0,5,100.0,0.41,0.47,2.36,2.87,0.14,0.42,0,0,0,0,0,0,0,1,0,1,0,0,4,1,0,0,0,0,4,2,0,1,0,0
+./logging.py,0,2,5,5,0,5,2,3,40.0,60.0,100.0,3,100.0,0.36,0.5,1.51,1.95,0.29,0.37,0,0,0,0,0,0,0,1,0,0,0,1,0,0,1,1,1,0,0,1,1,1,1,1
+./sessions.py,0,7,47,51,4,51,7,40,13.73,78.43,92.16,44,90.91,0.78,0.79,34.63,35.72,0.56,9.71,0,0,0,0,0,0,0,5,0,0,0,1,8,11,17,2,1,0,8,16,17,2,1,1
+./ctx.py,0,25,49,52,3,52,25,24,48.08,46.15,94.23,27,88.89,1.76,1.2,32.5,34.65,0.6,7.92,0,0,0,0,0,0,0,10,0,0,0,2,14,0,6,0,4,0,14,10,6,0,4,2
+./config.py,0,12,32,34,2,34,12,20,35.29,58.82,94.12,22,90.91,1.11,0.89,19.53,21.0,0.52,4.99,0,0,0,0,0,0,0,5,0,2,0,0,20,0,0,0,0,0,20,5,0,2,0,0
+./cli.py,0,21,85,93,8,93,21,64,22.58,68.82,91.4,72,88.89,5.56,2.98,214.91,221.83,1.97,54.21,0,0,0,0,0,0,0,10,0,6,0,2,46,7,5,0,6,0,46,17,5,6,6,2
+./__init__.py,0,1,2,2,0,2,1,1,50.0,50.0,100.0,1,100.0,0.47,0.76,0.76,1.44,0.22,0.28,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0
+json/provider.py,0,4,4,22,18,22,4,0,18.18,0.0,18.18,18,0.0,0.63,16.74,301.28,302.27,0.94,2.85,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0
+json/__init__.py,0,4,9,10,1,10,4,5,40.0,50.0,90.0,6,83.33,0.37,0.64,3.85,4.31,0.26,0.76,0,0,0,0,0,0,0,4,0,0,0,0,3,0,0,1,1,0,3,4,0,1,1,0
+json/tag.py,0,25,64,69,5,69,25,39,36.23,56.52,92.75,44,88.64,1.5,1.7,74.66,76.54,0.75,10.83,0,0,0,0,0,0,0,20,0,2,0,1,24,6,9,0,0,0,24,26,9,2,0,1
+sansio/app.py,0,18,64,72,8,72,18,46,25.0,63.89,88.89,54,85.19,2.95,1.76,94.87,98.44,1.16,22.86,0,0,0,0,0,0,0,10,0,5,0,2,29,8,7,1,1,0,29,18,7,6,1,2
+sansio/blueprints.py,0,16,16,72,56,72,16,0,22.22,0.0,22.22,56,0.0,1.52,5.42,303.34,305.39,1.27,11.38,0,0,0,0,0,0,0,9,0,4,0,1,0,0,0,0,0,0,0,9,0,4,0,1
+sansio/scaffold.py,0,16,16,68,52,68,16,0,23.53,0.0,23.53,52,0.0,1.86,5.85,304.08,306.46,1.08,8.57,0,0,0,0,0,0,0,6,0,8,0,0,0,0,0,0,0,0,0,6,0,8,0,0

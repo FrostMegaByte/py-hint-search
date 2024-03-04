@@ -1,0 +1,17 @@
+file,metric,# groundtruth annotations (excl. dunder methods),# added PyHintSearch annotations (excl. dunder methods),# correct,# incorrect,precision,recall
+.\adapters.py,adjusted_acc,18,18,8,10,0.44,0.44
+.\adapters.py,base_acc,18,18,10,8,0.56,0.56
+.\api.py,adjusted_acc,21,21,0,21,0.0,0.0
+.\api.py,base_acc,21,21,0,21,0.0,0.0
+.\auth.py,adjusted_acc,8,8,1,7,0.12,0.12
+.\auth.py,base_acc,8,8,1,7,0.12,0.12
+.\help.py,adjusted_acc,1,1,0,1,0.0,0.0
+.\help.py,base_acc,1,1,0,1,0.0,0.0
+.\models.py,adjusted_acc,19,19,12,7,0.63,0.63
+.\models.py,base_acc,19,19,12,7,0.63,0.63
+.\sessions.py,adjusted_acc,55,13,2,53,0.15,0.04
+.\sessions.py,base_acc,55,13,2,53,0.15,0.04
+.\structures.py,adjusted_acc,11,10,5,6,0.5,0.45
+.\structures.py,base_acc,11,10,6,5,0.6,0.55
+.\utils.py,adjusted_acc,51,51,27,24,0.53,0.53
+.\utils.py,base_acc,51,51,32,19,0.63,0.63

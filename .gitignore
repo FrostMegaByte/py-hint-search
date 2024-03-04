@@ -3,6 +3,8 @@ typings/
 logs/
 projects/
 
+typeshed-mergings/
+
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/

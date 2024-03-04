@@ -1,0 +1,1 @@
+2024-02-09 22:29:32,984 INFO     [main_typet5.py:280] Time TypeT5 model took for predictions: 279.65 seconds
