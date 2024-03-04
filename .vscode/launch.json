@@ -9,6 +9,23 @@
       "console": "integratedTerminal",
       "cwd": "${fileDirname}",
       "justMyCode": false
+    },
+    {
+      "name": "Main.py with arguments",
+      "type": "python",
+      "request": "launch",
+      "program": "main.py",
+      "args": [
+        "--project-path",
+        "D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/fully-annotated",
+        "--venv-path",
+        "D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/bleach-correct/.venv",
+        "--top-n",
+        "1"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${fileDirname}",
+      "justMyCode": false
     }
   ]
 }

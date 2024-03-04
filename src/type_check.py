@@ -349,14 +349,14 @@ class AccuracyMetric:
         common_type_names: set[str], ast_depth_limit: int | None = None
     ):
         return [
-            AccuracyMetric(
-                common_type_names,
-                relaxed_equality=False,
-                filter_none_any=False,
-                ignore_namespace=False,
-                ast_depth_limit=ast_depth_limit,
-                name="full_acc",
-            ),
+            # AccuracyMetric(
+            #     common_type_names,
+            #     relaxed_equality=False,
+            #     filter_none_any=False,
+            #     ignore_namespace=False,
+            #     ast_depth_limit=ast_depth_limit,
+            #     name="full_acc",
+            # ),
             AccuracyMetric(
                 common_type_names, ast_depth_limit=ast_depth_limit, name="adjusted_acc"
             ),

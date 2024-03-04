@@ -25,7 +25,7 @@ def gather_all_type_slots(source_code_tree: cst.Module):
     return all_type_slots
 
 
-def create_evaluation_csv_file(postfix) -> None:
+def create_evaluation_csv_file(postfix: str) -> None:
     csv_file = f"logs-evaluation/evaluation-statistics-{postfix}.csv"
     if os.path.exists(csv_file):
         return
