@@ -9,11 +9,9 @@ from annotations import (
     insert_parameter_annotation,
     insert_return_annotation,
 )
+from constants import TypeSlot, Predictions
 from fake_editor import FakeEditor
 from imports import add_import_to_source_code_tree
-
-TypeSlot: TypeAlias = Tuple[str, ...]
-Predictions: TypeAlias = List[List[Union[str, float]]]
 
 
 def transform_predictions_to_slots_to_search(
@@ -68,7 +66,7 @@ def depth_first_traversal(
     editor: FakeEditor,
     number_of_type_slots: int,
     all_project_classes: Dict[str, str],
-):
+) -> cst.Module:
     layer_index = 0
     layer_specific_indices = [0] * number_of_type_slots
     slot_annotations = [""] * number_of_type_slots

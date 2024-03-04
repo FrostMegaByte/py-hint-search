@@ -57,7 +57,7 @@ def get_all_classes_in_project(
     return all_classes
 
 
-def find_site_packages(venv_path):
+def find_site_packages(venv_path: str) -> str | None:
     for root, dirnames, filenames in os.walk(venv_path):
         for dirname in fnmatch.filter(dirnames, "site-packages"):
             return os.path.join(root, dirname)
@@ -267,8 +267,10 @@ class TypeAliasInserter(cst.CSTTransformer):
 
 
 def handle_binary_operation_imports(
-    source_code_tree, should_import_optional, should_import_union
-):
+    source_code_tree: cst.Module,
+    should_import_optional: bool,
+    should_import_union: bool,
+) -> cst.Module:
     if not should_import_optional and not should_import_union:
         return source_code_tree
 

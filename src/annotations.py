@@ -184,12 +184,16 @@ class PyrightTypeAnnotationCollector(cst.CSTVisitor):
 
 
 class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
-    def __init__(self, annotations, unknown_annotations: Set[str]) -> None:
-        self.stack: List[Tuple[str, ...]] = []
-        self.annotations: Dict[
+    def __init__(
+        self,
+        annotations: Dict[
             Tuple[str, ...],
             Tuple[cst.Parameters, Optional[cst.Annotation]],
-        ] = annotations
+        ],
+        unknown_annotations: Set[str],
+    ) -> None:
+        self.stack: List[Tuple[str, ...]] = []
+        self.annotations = annotations
         self.unknown_annotations = unknown_annotations
 
     def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
@@ -273,7 +277,7 @@ class BinaryAnnotationTransformer(cst.CSTTransformer):
 
 
 class BinaryOperationToUnionTransformer(cst.CSTTransformer):
-    def __init__(self, parent) -> None:
+    def __init__(self, parent: BinaryAnnotationTransformer) -> None:
         self.parent = parent
 
     def leave_BinaryOperation(

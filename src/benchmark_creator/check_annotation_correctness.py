@@ -1,21 +1,21 @@
 import argparse
 import os
 import re
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 import libcst as cst
 import csv
 import colorama
 from colorama import Fore
 
 from annotations import TypeSlotsVisitor
-from constants import COMMON_ANNOTATIONS
+from constants import COMMON_ANNOTATIONS, TypeSlot
 from evaluation import remove_known_dunder_methods
 from type_check import PythonType, parse_type_str, AccuracyMetric
 
 colorama.init(autoreset=True)
 
 
-def parse_arguments(project_name, top_n) -> argparse.Namespace:
+def parse_arguments(project_name: str, top_n: int) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Check the correctness of PyHintSearch determined type annotations compared to ground truth"
     )
@@ -61,7 +61,7 @@ def parse_arguments(project_name, top_n) -> argparse.Namespace:
     return parser.parse_args()
 
 
-def create_correctness_csv_file(postfix):
+def create_correctness_csv_file(postfix: str) -> None:
     headers = [
         "file",
         "metric",
@@ -81,7 +81,7 @@ def create_correctness_csv_file(postfix):
         writer.writerow(headers)
 
 
-def append_to_correctness_csv_file(correctness_statistics, postfix):
+def append_to_correctness_csv_file(correctness_statistics: List, postfix: str):
     with open(
         f"logs-evaluation/type-correctness-{postfix}.csv",
         "a",
@@ -91,13 +91,15 @@ def append_to_correctness_csv_file(correctness_statistics, postfix):
         writer.writerow(correctness_statistics)
 
 
-def filter_out_Missing(annotations):
+def filter_out_Missing(
+    annotations: Dict[TypeSlot, PythonType]
+) -> Dict[TypeSlot, PythonType]:
     return {k: v for k, v in annotations.items() if v != parse_type_str("Missing")}
 
 
 def calculate_correctness(
-    groundtruth_annotations: Dict[Tuple[str, ...], PythonType],
-    pyhintsearch_annotations: Dict[Tuple[str, ...], PythonType],
+    groundtruth_annotations: Dict[TypeSlot, PythonType],
+    pyhintsearch_annotations: Dict[TypeSlot, PythonType],
     metric: AccuracyMetric,
 ):
     assert len(pyhintsearch_annotations) == len(groundtruth_annotations)
@@ -168,7 +170,7 @@ def calculate_correctness(
     }, incorrect_annotations
 
 
-def main(args):
+def main(args: argparse.Namespace):
     annotated_dir_name = args.pyhintsearch_annotated_project_path.split("/")[-1]
     postfix = "SOMETHING_WENT_WRONG"
     if annotated_dir_name.startswith("type-annotated-top"):

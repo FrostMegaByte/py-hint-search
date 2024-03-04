@@ -2,6 +2,7 @@ import json
 import os
 import argparse
 import time
+from typing import Dict, Tuple
 import libcst as cst
 import colorama
 from colorama import Fore
@@ -57,14 +58,14 @@ def parse_arguments() -> argparse.Namespace:
         "--project-path",
         type=dir_path,
         # default="D:/Documents/test/requests-main/src/requests",
-        default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/colorama-correct/fully-annotated",
+        default="D:/Documents/py-hint-search/ff",
         help="The path to the Python files directory of the project that will be type annotated.",
         # required=True,
     )
     parser.add_argument(
         "--venv-path",
         type=dir_path,
-        # default="D:/Documents/test/requests-main/.venv",
+        default="D:/Documents/py-hint-search/.venv",
         # default="D:/Documents/TU Delft/Year 6/Master's Thesis/lsp-mark-python/src/typeshed-mergings/html5lib-correct/.venv",
         help="The path to the virtual environment of the project that will be type annotated.",
     )
@@ -72,7 +73,7 @@ def parse_arguments() -> argparse.Namespace:
         "--top-n",
         type=int,
         choices=range(1, 6),
-        default="3",
+        default="1",
         help="Try the top-n type annotation predictions during search.",
     )
     parser.add_argument(
@@ -124,13 +125,13 @@ def get_pyright_stubs_path(working_directory: str) -> str:
 
 
 def run_pyright(
-    source_code_tree,
-    root,
-    working_directory,
-    file_path,
-    file,
-    all_project_classes,
-):
+    source_code_tree: cst.Module,
+    root: str,
+    working_directory: str,
+    file_path: str,
+    file: str,
+    all_project_classes: Dict[str, str],
+) -> Tuple[cst.Module, bool]:
     """
     Returns:
         source_code_tree: the source code tree to perform the ML search on
@@ -197,8 +198,12 @@ def preprocess_source_code_tree(source_code_tree: cst.Module) -> cst.Module:
 
 
 def run_ml_search(
-    source_code_tree, file, added_extra_pyright_annotations, editor, all_project_classes
-):
+    source_code_tree: cst.Module,
+    file: str,
+    added_extra_pyright_annotations: bool,
+    editor: FakeEditor,
+    all_project_classes: Dict[str, str],
+) -> tuple[cst.Module, bool, bool, int]:
     """
     Returns:
         source_code_tree: the source code tree to perform the ML search on
@@ -456,14 +461,11 @@ if __name__ == "__main__":
     os.chdir(os.path.abspath(os.path.join(args.project_path, "..")))
 
     create_pyright_config_file(args.project_path, args.venv_path)
-    for i in [5, 3, 1]:
-        args.top_n = i
-
-        logger = create_main_logger()
-        evaluation_logger = create_evaluation_logger()
-        main(args)
-        close_logger(logger)
-        close_logger(evaluation_logger)
+    logger = create_main_logger()
+    evaluation_logger = create_evaluation_logger()
+    main(args)
+    close_logger(logger)
+    close_logger(evaluation_logger)
     remove_pyright_config_file(args.project_path)
 
     # try:

@@ -6,6 +6,8 @@ import subprocess
 import time
 from typing import Any, Dict
 
+from libcst.metadata import CodeRange
+
 from client.json_rpc_endpoint import JsonRpcEndpoint
 from client.lsp_client import LspClient
 from client.lsp_endpoint import LspEndpoint
@@ -117,7 +119,9 @@ class FakeEditor:
         )
         self._wait_for_diagnostics()
 
-    def change_file(self, new_python_code: str, modified_location) -> None:
+    def change_file(
+        self, new_python_code: str, modified_location: CodeRange | None
+    ) -> None:
         self.modified_location = modified_location
         self.edit_document.version += 1
         document = VersionedTextDocumentIdentifier(
@@ -133,7 +137,7 @@ class FakeEditor:
         )
         self._wait_for_diagnostics()
 
-    def _error_in_modified_location(self, range) -> bool:
+    def _error_in_modified_location(self, range: Dict) -> bool:
         return (
             self.modified_location is not None
             and range["start"]["line"] >= self.modified_location.start.line
@@ -142,7 +146,7 @@ class FakeEditor:
             and range["end"]["character"] <= self.modified_location.end.column
         )
 
-    def has_diagnostic_error(self, at_start=False) -> bool:
+    def has_diagnostic_error(self, at_start: bool = False) -> bool:
         ERROR_PATTERN = r'cannot be assigned to|is not defined|Operator ".*" not supported for types ".*" and ".*"'
         ALLOWED_PATTERN = r'"Unknown" is not defined'
 

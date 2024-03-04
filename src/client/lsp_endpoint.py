@@ -1,12 +1,16 @@
 from __future__ import print_function
 import threading
+from typing import Callable, Dict
 
 from client.json_rpc_endpoint import JsonRpcEndpoint
 
 
 class LspEndpoint(threading.Thread):
     def __init__(
-        self, json_rpc_endpoint: JsonRpcEndpoint, default_callback=print, callbacks={}
+        self,
+        json_rpc_endpoint: JsonRpcEndpoint,
+        default_callback: Callable = print,
+        callbacks: Dict[str, Callable] = {},
     ):
         threading.Thread.__init__(self)
         self.json_rpc_endpoint = json_rpc_endpoint

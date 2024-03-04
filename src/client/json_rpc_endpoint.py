@@ -2,6 +2,7 @@ from __future__ import print_function
 import json
 import re
 import threading
+from typing import IO
 
 JSON_RPC_REQ_FORMAT = "Content-Length: {json_string_len}\r\n\r\n{json_string}"
 JSON_RPC_RES_REGEX = "Content-Length: ([0-9]*)\r\n"
@@ -22,14 +23,14 @@ class JsonRpcEndpoint(object):
     protocol. More information can be found: https://www.jsonrpc.org/
     """
 
-    def __init__(self, stdin, stdout):
+    def __init__(self, stdin: IO[bytes], stdout: IO[bytes]) -> None:
         self.stdin = stdin
         self.stdout = stdout
         self.read_lock = threading.Lock()
         self.write_lock = threading.Lock()
 
     @staticmethod
-    def _add_header(json_string):
+    def _add_header(json_string: str) -> str:
         return JSON_RPC_REQ_FORMAT.format(
             json_string_len=len(json_string),
             json_string=json_string,

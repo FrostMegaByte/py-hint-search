@@ -61,7 +61,7 @@ class RemoveTypeAnnotationsTransformer(cst.CSTTransformer):
     #     )
 
 
-def remove_type_hints(source: str):
+def remove_type_hints(source: str) -> str:
     module = cst.parse_module(source)
     transformer = RemoveTypeAnnotationsTransformer()
     transformed_module = module.visit(transformer)

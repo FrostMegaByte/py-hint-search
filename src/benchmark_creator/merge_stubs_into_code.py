@@ -41,14 +41,19 @@ class TypingCollector(cst.CSTVisitor):
 
 
 class TypingTransformer(cst.CSTTransformer):
-    def __init__(self, annotations, imports, type_aliases):
-        self.stack: List[Tuple[str, ...]] = []
-        self.annotations: Dict[
+    def __init__(
+        self,
+        annotations: Dict[
             Tuple[str, ...],
             Tuple[cst.Parameters, Optional[cst.Annotation]],
-        ] = annotations
-        self.imports: List[Union[cst.Import, cst.ImportFrom]] = imports
-        self.type_aliases: List[cst.AnnAssign] = type_aliases
+        ],
+        imports: List[Union[cst.Import, cst.ImportFrom]],
+        type_aliases: List[cst.AnnAssign],
+    ):
+        self.stack: List[Tuple[str, ...]] = []
+        self.annotations = annotations
+        self.imports = imports
+        self.type_aliases = type_aliases
 
     def leave_Module(
         self, original_node: cst.Module, updated_node: cst.Module

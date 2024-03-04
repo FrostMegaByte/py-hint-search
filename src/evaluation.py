@@ -1,10 +1,10 @@
 import os
 import csv
-from typing import Tuple
+from typing import Tuple, List, Dict, TypeAlias
 import libcst as cst
 
 from annotations import TypeSlotsVisitor
-from constants import UBIQUITOUS_ANNOTATIONS, COMMON_ANNOTATIONS
+from constants import TypeSlot, UBIQUITOUS_ANNOTATIONS, COMMON_ANNOTATIONS
 from type_check import PythonType, normalize_type, parse_type_str
 
 
@@ -15,7 +15,7 @@ INCOMPLETE_TYPE_ANNOTATIONS = {
 }
 
 
-def gather_all_type_slots(source_code_tree: cst.Module):
+def gather_all_type_slots(source_code_tree: cst.Module) -> Dict[TypeSlot, str | None]:
     visitor = TypeSlotsVisitor()
     source_code_tree.visit(visitor)
     all_type_slots = {
@@ -85,7 +85,7 @@ def create_evaluation_csv_file(postfix: str) -> None:
         writer.writerow(headers)
 
 
-def append_to_evaluation_csv_file(statistics, postfix) -> None:
+def append_to_evaluation_csv_file(statistics: List, postfix: str) -> None:
     with open(
         f"logs-evaluation/evaluation-statistics-{postfix}.csv",
         "a",
@@ -95,9 +95,10 @@ def append_to_evaluation_csv_file(statistics, postfix) -> None:
         writer.writerow(statistics)
 
 
+# TODO: Is this function used? If not, remove it.
 def calculate_extra_annotations(
-    initial_type_slots,
-    updated_type_slots,
+    initial_type_slots: Dict[TypeSlot, str | None],
+    updated_type_slots: Dict[TypeSlot, str | None],
 ):
     extra_annotations = {
         k: v
@@ -108,8 +109,8 @@ def calculate_extra_annotations(
 
 
 def has_extra_annotations(
-    initial_type_slots,
-    updated_type_slots,
+    initial_type_slots: Dict[TypeSlot, str | None],
+    updated_type_slots: Dict[TypeSlot, str | None],
 ):
     none_type_slots = {
         key: updated_type_slots[key]
@@ -120,18 +121,18 @@ def has_extra_annotations(
     return all_values_none
 
 
-def gather_annotated_slots(type_slots):
+def gather_annotated_slots(type_slots) -> Dict[TypeSlot, str]:
     annotations = {k: v for k, v in type_slots.items() if v is not None}
     return annotations
 
 
-def gather_fillable_slots(type_slots):
+def gather_fillable_slots(type_slots) -> Dict[TypeSlot, None]:
     annotations = {k: v for k, v in type_slots.items() if v is None}
     return annotations
 
 
-def remove_known_dunder_methods(type_slots):
-    def contains_dunder_string(slot: Tuple[str, ...]) -> bool:
+def remove_known_dunder_methods(type_slots) -> Dict[TypeSlot, str | None]:
+    def contains_dunder_string(slot: TypeSlot) -> bool:
         return any(s.startswith("__") and s.endswith("__") for s in slot)
 
     annotations = {
@@ -142,14 +143,18 @@ def remove_known_dunder_methods(type_slots):
     return annotations
 
 
-def normalize_annotations(annotations):
+def normalize_annotations(
+    annotations: Dict[TypeSlot, str | None]
+) -> Dict[TypeSlot, PythonType]:
     normalized_annotations = {
         k: normalize_type(parse_type_str(v)) for k, v in annotations.items()
     }
     return normalized_annotations
 
 
-def split_into_ubiquitous_common_rare(type_slots):
+def split_into_ubiquitous_common_rare(
+    type_slots: Dict[TypeSlot, PythonType]
+) -> Tuple[Dict, Dict, Dict]:
     def is_ubiquitous_type(t: PythonType) -> bool:
         return t.head_name() in UBIQUITOUS_ANNOTATIONS and all(
             map(is_ubiquitous_type, t.args)
@@ -169,7 +174,9 @@ def split_into_ubiquitous_common_rare(type_slots):
     return ubiquitous, common, rare
 
 
-def split_parameters_and_return_types(type_slots):
+def split_parameters_and_return_types(
+    type_slots: Dict[TypeSlot, PythonType]
+) -> Tuple[Dict, Dict]:
     parameters_dict = {}
     return_dict = {}
     for slot, annotation in type_slots.items():
@@ -180,7 +187,9 @@ def split_parameters_and_return_types(type_slots):
     return parameters_dict, return_dict
 
 
-def gather_ubiquitous_common_rare(annotations):
+def gather_ubiquitous_common_rare(
+    annotations: Dict[TypeSlot, str]
+) -> tuple[Dict, Dict, Dict, Dict, Dict, Dict]:
     annotations_filtered = remove_known_dunder_methods(annotations)
     annotations_normalized = normalize_annotations(annotations_filtered)
     ubiquitous, common, rare = split_into_ubiquitous_common_rare(annotations_normalized)
@@ -201,17 +210,17 @@ def gather_ubiquitous_common_rare(annotations):
 
 def calculate_evaluation_statistics(
     file,
-    type_slots_groundtruth,
-    type_slots_after_pyright,
-    type_slots_after_ml_search,
-    number_of_ml_evaluated_type_slots,
-    has_performed_pyright_step,
-    has_performed_ml_search,
-    pyright_time,
-    ml_search_time,
-    total_time,
-    peak_memory_usage_pyright,
-    peak_memory_usage_ml_search,
+    type_slots_groundtruth: Dict[TypeSlot, str | None],
+    type_slots_after_pyright: Dict[TypeSlot, str | None],
+    type_slots_after_ml_search: Dict[TypeSlot, str | None],
+    number_of_ml_evaluated_type_slots: int,
+    has_performed_pyright_step: bool,
+    has_performed_ml_search: bool,
+    pyright_time: float,
+    ml_search_time: float,
+    total_time: float,
+    peak_memory_usage_pyright: int,
+    peak_memory_usage_ml_search: int,
 ):
     annotations_groundtruth = gather_annotated_slots(type_slots_groundtruth)
     annotations_after_pyright = gather_annotated_slots(type_slots_after_pyright)

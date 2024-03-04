@@ -5,7 +5,7 @@ from libcst import RemoveFromParent
 
 
 class ClassDefFinder(cst.CSTVisitor):
-    def __init__(self):
+    def __init__(self) -> None:
         self.has_nested_class = False
 
     def visit_ClassDef(self, node: cst.ClassDef) -> None:
@@ -13,7 +13,7 @@ class ClassDefFinder(cst.CSTVisitor):
 
 
 class FunctionDefFinder(cst.CSTVisitor):
-    def __init__(self):
+    def __init__(self) -> None:
         self.has_nested_function = False
 
     def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
@@ -21,7 +21,7 @@ class FunctionDefFinder(cst.CSTVisitor):
 
 
 class StubTransformer(cst.CSTTransformer):
-    def __init__(self):
+    def __init__(self) -> None:
         self.in_function_count = 0
 
     def visit_ClassDef(self, node: cst.ClassDef) -> bool:

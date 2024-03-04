@@ -1,3 +1,8 @@
+from typing import List, Tuple, TypeAlias, Union
+
+TypeSlot: TypeAlias = Tuple[str, ...]
+Predictions: TypeAlias = List[List[Union[str, float]]]
+
 EXCEPTIONS_AND_ERRORS = {
     "Exception",
     "BaseException",

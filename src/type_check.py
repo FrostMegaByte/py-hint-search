@@ -1,5 +1,6 @@
 import ast
 from dataclasses import dataclass
+from typing import List, Self
 
 
 @dataclass(unsafe_hash=True, order=True)
@@ -31,7 +32,7 @@ class PythonType:
             out = f"{h}[{', '.join(map(str, self.args))}]"
         return out
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"ty'{str(self)}'"
 
     def all_heads(self):
@@ -276,7 +277,7 @@ class AccuracyMetric:
     @staticmethod
     def default_metrics(
         common_type_names: set[str], ast_depth_limit: int | None = None
-    ):
+    ) -> List[Self]:
         return [
             AccuracyMetric(
                 common_type_names,
@@ -347,7 +348,7 @@ class AccuracyMetric:
     @staticmethod
     def condensed_default_metrics(
         common_type_names: set[str], ast_depth_limit: int | None = None
-    ):
+    ) -> List[Self]:
         return [
             # AccuracyMetric(
             #     common_type_names,
