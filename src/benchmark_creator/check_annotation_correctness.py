@@ -47,7 +47,7 @@ def parse_arguments(project_name, top_n) -> argparse.Namespace:
         "--intersecting-project-path",
         type=dir_path,
         default=f"D:/Documents/TU Delft/Year 6/Master's Thesis/Results from GCP/{project_name}/annotations-stripped/pyright-annotated-source-code",
-        help="The path to the project whose files are intersected with the PyHintSearch annotated project files. (This is needed for equal comparison for thesis evaluation). I.e. if PyHintSearch project is type-annotated-topn directory, this should be pyright-annotated directory. If PyHintSearch project is pyright-annotated directory, this should be type-annotated-topn directory).",
+        help="The path to the project whose files are intersected with the PyHintSearch annotated project files. (This is needed for equal comparison for thesis evaluation). I.e. if PyHintSearch project is type-annotated-topn-source-code directory, this should be pyright-annotated-source-code directory. If PyHintSearch project is pyright-annotated-source-code directory, this should be type-annotated-topn-source-code directory).",
         # required=True,
     )
     parser.add_argument(
@@ -148,18 +148,12 @@ def calculate_correctness(
         n_groundtruth += 1
 
     try:
-        n_all = len(
-            [
-                v
-                for v in pyhintsearch_annotations.values()
-                if v != parse_type_str("Missing")
-            ]
-        )
+        n_all = n_pyhintsearch
         precision = n_correct / n_all
     except ZeroDivisionError:
         precision = "-"
     try:
-        D = len(groundtruth_annotations)
+        D = n_groundtruth
         recall = n_correct / D
     except ZeroDivisionError:
         recall = "-"
@@ -169,22 +163,12 @@ def calculate_correctness(
         "pyhintsearch_annotations_count": n_pyhintsearch,
         "correct_count": n_correct,
         "incorrect_count": n_incorrect,
-        "precision": round(precision, 2),
-        "recall": round(recall, 2),
+        "precision": round(precision, 2) if precision != "-" else "-",
+        "recall": round(recall, 2) if recall != "-" else "-",
     }, incorrect_annotations
 
 
-def main():
-    while True:
-        project_name = input("Please enter the project name: ")
-        top_n = int(input("Enter a value (1, 3 or 5): "))
-        if top_n in (1, 3, 5):
-            break
-        print("Invalid input. Please enter 1, 3 or 5.")
-
-    args = parse_arguments(project_name, top_n)
-    os.chdir(os.path.abspath(os.path.join(args.fully_annotated_project_path, "..")))
-
+def main(args):
     annotated_dir_name = args.pyhintsearch_annotated_project_path.split("/")[-1]
     postfix = "SOMETHING_WENT_WRONG"
     if annotated_dir_name.startswith("type-annotated-top"):
@@ -323,4 +307,35 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    while True:
+        project_name = input("Please enter the project name: ").strip()
+        top_n = int(input("Enter a value (1, 3 or 5): "))
+        if top_n in (1, 3, 5):
+            break
+        print("Invalid input. Please enter 1, 3 or 5.")
+
+    # for project_name in [
+    #     "black",
+    #     "bleach",
+    #     "braintree",
+    #     "colorama",
+    #     "dateparser",
+    #     "django",
+    #     "exifread",
+    #     "flask",
+    #     "html5lib",
+    #     "matplotlib",
+    #     "pandas",
+    #     "Pillow",
+    #     "redis",
+    #     "requests",
+    #     "seaborn",
+    #     "stripe",
+    # ]:
+    #     for i in [1, 3, 5]:
+    #         top_n = i
+
+    args = parse_arguments(project_name, top_n)
+    os.chdir(os.path.abspath(os.path.join(args.fully_annotated_project_path, "..")))
+
+    main(args)
