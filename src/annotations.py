@@ -219,7 +219,7 @@ class PyrightTypeAnnotationTransformer(cst.CSTTransformer):
             pyright_params, pyright_return = self.annotations[func]
             updated_params = list(updated_node.params.params)
             for i, param in enumerate(updated_node.params.params):
-                if param.name.value == "self":
+                if param.name.value in ("self", "cls"):
                     continue
                 if param.annotation is None:
                     for pyright_param in pyright_params.params:
@@ -330,7 +330,7 @@ class TypeSlotsVisitor(cst.CSTVisitor):
     def visit_FunctionDef(self, node: cst.FunctionDef) -> Optional[bool]:
         self.stack.append(node.name.value)
         for param in node.params.params:
-            if param.name.value == "self":
+            if param.name.value in ("self", "cls"):
                 continue
             self.stack.append(param.name.value)
             if param.annotation is not None:
